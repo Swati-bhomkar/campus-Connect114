@@ -1,0 +1,38 @@
+import { useState } from "react";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { PostCard } from "@/components/PostCard";
+import { USERS, POSTS, type Post } from "@/lib/mock-data";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Settings } from "lucide-react";
+import { toast } from "sonner";
+
+const ALUMNI = USERS.find(u => u.id === "u1")!;
+const NAV = [
+  { title: "Overview", url: "/alumni", icon: LayoutDashboard },
+  { title: "Discovery", url: "/alumni/discovery", icon: Search },
+  { title: "Incoming Requests", url: "/alumni/requests", icon: FileText },
+  { title: "Connections", url: "/alumni/connections", icon: Users },
+  { title: "My Posts", url: "/alumni/posts", icon: Newspaper },
+  { title: "Create Post", url: "/alumni/create-post", icon: PlusCircle },
+  { title: "Referral Settings", url: "/alumni/settings", icon: Settings },
+  { title: "My Profile", url: "/alumni/profile", icon: User },
+];
+
+export default function AlumniPosts() {
+  const [posts, setPosts] = useState<Post[]>([...POSTS]);
+
+  const handleDelete = (postId: string) => {
+    setPosts(prev => prev.filter(p => p.id !== postId));
+    toast.success("Post deleted successfully");
+  };
+
+  return (
+    <DashboardLayout navItems={NAV} groupLabel="Alumni" userName={ALUMNI.name} userRole="Alumni" userAvatar={ALUMNI.avatar} currentUser={ALUMNI}>
+      <h2 className="text-xl font-bold text-foreground mb-1">Posts</h2>
+      <p className="text-sm text-muted-foreground mb-6">Professional posts from the network</p>
+
+      <div className="max-w-2xl space-y-4">
+        {posts.map(p => <PostCard key={p.id} post={p} currentUserId={ALUMNI.id} onDelete={handleDelete} />)}
+      </div>
+    </DashboardLayout>
+  );
+}
