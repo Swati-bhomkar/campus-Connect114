@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, AlertCircle, CheckCircle2, SkipForward, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, AlertCircle, CheckCircle2, SkipForward, ShieldCheck, Loader2 } from "lucide-react";
+
+// API Base URL configuration
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const DOMAINS = [
   "Software Engineering", "Data Science", "Frontend Development", "Backend Engineering",
@@ -28,72 +31,6 @@ const SKILLS_MAP: Record<string, string[]> = {
   "Data Engineering": ["Spark", "Airflow", "Python", "Snowflake", "Kafka", "SQL"],
 };
 
-// Student database from uploaded CSV
-const STUDENT_DATABASE = [
-  { regNo: "223061", name: "ABHISHEK NIMBAL" },
-  { regNo: "223062", name: "AISHAWARYA PAYAPPANAVAR" },
-  { regNo: "223063", name: "AMAN THAKUR" },
-  { regNo: "223064", name: "AMOGH KULKARNI" },
-  { regNo: "223065", name: "ANNAPURNA MATHAD" },
-  { regNo: "223066", name: "ANUPAMA CHINIWAL" },
-  { regNo: "223067", name: "ARSHEEN HARIHAR" },
-  { regNo: "223068", name: "ASHRAY HEGDE" },
-  { regNo: "223069", name: "ASHWARYA PATIL" },
-  { regNo: "223070", name: "ASHWINI SARUR" },
-  { regNo: "223071", name: "ASHWINI HULAKUND" },
-  { regNo: "223072", name: "BASANAGOUDA NANDIHALLI" },
-  { regNo: "223073", name: "CHAITRA NALAWAD" },
-  { regNo: "223074", name: "CHANDRAKANTH BHANGIGOUDAR" },
-  { regNo: "223075", name: "CHANNABASAVARAJA MATHADA" },
-  { regNo: "223076", name: "DARSHAN KADEMANI" },
-  { regNo: "223077", name: "DEEKSHA GOUDAPPAGOUDAR" },
-  { regNo: "223078", name: "DISHA RAKKASAGIMATH" },
-  { regNo: "223079", name: "DURGA PARASHURAM SULAKHE" },
-  { regNo: "223080", name: "GAGAN EGANAGOUDAR" },
-  { regNo: "223081", name: "GURUPADESH HUBBALLI" },
-  { regNo: "223082", name: "KARTHIK REVANAKAR" },
-  { regNo: "223083", name: "KARTHIK MULAMUTTAL" },
-  { regNo: "223084", name: "KIRAN BANAVI" },
-  { regNo: "223085", name: "MAMATHA GADEKAR" },
-  { regNo: "223086", name: "MANJUNATH HEDGE" },
-  { regNo: "223087", name: "MANOJKUMAR MAHADEVAPPANAVAR" },
-  { regNo: "223088", name: "NANDITA TANKSALI" },
-  { regNo: "223089", name: "NAVEEN PATIL" },
-  { regNo: "223090", name: "NAVYA KUKANUR" },
-  { regNo: "223091", name: "NIDHI KULKARNI" },
-  { regNo: "223092", name: "NITIN UMRANI" },
-  { regNo: "223093", name: "PRAKASH KUMBAR" },
-  { regNo: "223094", name: "PRASHANTH CHOUGULE" },
-  { regNo: "223095", name: "PRATEEK G KALAL" },
-  { regNo: "223096", name: "PRAVEENGOUDA PATIL" },
-  { regNo: "223097", name: "PREETI TALIKOTE" },
-  { regNo: "223098", name: "RAKSHIT PANDURANGI" },
-  { regNo: "223099", name: "RAKSHITA PATIL" },
-  { regNo: "223100", name: "RAKSHITHA B" },
-  { regNo: "223101", name: "RAVIDARSHANSWAMY HIREMATH" },
-  { regNo: "223102", name: "RUFUS K" },
-  { regNo: "223103", name: "SAHANA BAVALATTI" },
-  { regNo: "223104", name: "SAHANA PATIL" },
-  { regNo: "223105", name: "SAHANA PATILA" },
-  { regNo: "223106", name: "SAVITHA HIREMATH" },
-  { regNo: "223107", name: "SELINA SATTI" },
-  { regNo: "223108", name: "SHREEGOURI T" },
-  { regNo: "223109", name: "SINCHANA BHAT" },
-  { regNo: "223110", name: "SNEHA BELAVAL" },
-  { regNo: "223111", name: "SOOKTHI IJARI" },
-  { regNo: "223112", name: "SUHAS HONNALLI" },
-  { regNo: "223113", name: "SWATHI BOLI" },
-  { regNo: "223114", name: "SWATI BHOMKAR" },
-  { regNo: "223115", name: "TANUSHREE G" },
-  { regNo: "223116", name: "TUSHARAHMED BADEKHANNAVAR" },
-  { regNo: "223117", name: "VAISHNAVI MATHAPATI" },
-  { regNo: "223118", name: "VARSHA MANAGUNDI" },
-  { regNo: "223119", name: "VIKAS PATIL" },
-  { regNo: "223120", name: "VISMAY SHEELABHADRA" },
-];
-
-const normalize = (s: string) => s.trim().toUpperCase().replace(/\s+/g, " ");
-
 export default function StudentRegister() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -103,7 +40,6 @@ export default function StudentRegister() {
   const [lastName, setLastName] = useState("");
   const [regNumber, setRegNumber] = useState("");
   const [verificationResult, setVerificationResult] = useState<"idle" | "success" | "error">("idle");
-  const [matchedStudent, setMatchedStudent] = useState<typeof STUDENT_DATABASE[0] | null>(null);
 
   // Step 2: Account setup
   const [password, setPassword] = useState("");
@@ -116,20 +52,48 @@ export default function StudentRegister() {
   const [domain, setDomain] = useState("");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
-  const handleVerify = () => {
-    const enteredName = normalize(`${firstName} ${lastName}`);
-    const enteredReg = regNumber.trim();
+  // Registration submission
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [submissionSuccess, setSubmissionSuccess] = useState(false);
 
-    const match = STUDENT_DATABASE.find(
-      (s) => s.regNo === enteredReg && normalize(s.name) === enteredName
-    );
+  const handleRegister = async () => {
+    setIsSubmitting(true);
+    setSubmissionError(null);
 
-    if (match) {
-      setVerificationResult("success");
-      setMatchedStudent(match);
-    } else {
-      setVerificationResult("error");
-      setMatchedStudent(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          registrationNumber: regNumber.trim(),
+          password,
+          confirmPassword,
+          email: collegeEmail,
+          passOutYear: parseInt(passOutYear),
+          domain: domain || null,
+          skills: selectedSkills,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Registration failed");
+      }
+
+      setSubmissionSuccess(true);
+      setTimeout(() => {
+        navigate("/student");
+      }, 1500);
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : "Registration failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -315,6 +279,28 @@ export default function StudentRegister() {
             {/* Step 3: Domain & Skills (optional) */}
             {step === 3 && (
               <div className="space-y-4">
+                {/* Success Message */}
+                {submissionSuccess && (
+                  <div className="rounded-md border border-green-300 bg-green-50 p-4 text-sm">
+                    <p className="flex items-center gap-2 text-green-800 font-medium">
+                      <CheckCircle2 className="h-5 w-5" /> Registration successful!
+                    </p>
+                    <p className="mt-2 text-xs text-green-700">
+                      Redirecting to login...
+                    </p>
+                  </div>
+                )}
+
+                {/* Error Message */}
+                {submissionError && (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                    <p className="flex items-center gap-1 text-destructive font-medium">
+                      <AlertCircle className="h-4 w-4" /> Registration failed
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">{submissionError}</p>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label>Domain</Label>
                   <Select
@@ -368,21 +354,7 @@ export default function StudentRegister() {
               {step === 1 && (
                 <Button
                   className="flex-1"
-                  onClick={() => {
-                    const enteredName = normalize(`${firstName} ${lastName}`);
-                    const enteredReg = regNumber.trim();
-                    const match = STUDENT_DATABASE.find(
-                      (s) => s.regNo === enteredReg && normalize(s.name) === enteredName
-                    );
-                    if (match) {
-                      setVerificationResult("success");
-                      setMatchedStudent(match);
-                      setStep(2);
-                    } else {
-                      setVerificationResult("error");
-                      setMatchedStudent(null);
-                    }
-                  }}
+                  onClick={() => setStep(2)}
                   disabled={!firstName.trim() || !lastName.trim() || !regNumber.trim()}
                 >
                   Next <ArrowRight className="h-4 w-4 ml-1" />
@@ -403,11 +375,22 @@ export default function StudentRegister() {
                     variant="outline"
                     className="flex-1"
                     onClick={() => navigate("/student")}
+                    disabled={isSubmitting}
                   >
                     <SkipForward className="h-4 w-4 mr-1" /> Skip
                   </Button>
-                  <Button className="flex-1" onClick={() => navigate("/student")}>
-                    Create Account
+                  <Button
+                    className="flex-1"
+                    onClick={handleRegister}
+                    disabled={isSubmitting || submissionSuccess}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Registering...
+                      </>
+                    ) : (
+                      <>Create Account</>
+                    )}
                   </Button>
                 </div>
               )}

@@ -10,10 +10,10 @@ export interface User {
   email: string;
   registrationNumber: string;
   role: UserRole;
-  passOutYear: number;
   domain: string;
   skills: string[];
   currentStatus: "studying" | "working";
+  passOutYear: number;
   company?: string;
   companyVerified: VerificationStatus;
   reputationScore: number;
