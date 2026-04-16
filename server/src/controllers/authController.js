@@ -47,6 +47,46 @@ const generateAvatarUrl = (name) => {
 };
 
 /**
+ * Verify student credentials against CSV database
+ * POST /api/auth/verify-student
+ */
+export const verifyStudentCredentials = async (req, res) => {
+  try {
+    const { firstName, lastName, registrationNumber } = req.body;
+
+    // Validation: Check required fields
+    if (!firstName || !lastName || !registrationNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "First name, last name, and registration number are required",
+      });
+    }
+
+    // Verify student against CSV database
+    const studentExists = verifyStudent(firstName, lastName, registrationNumber);
+    if (!studentExists) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to register",
+        reason: "Name and registration number do not match college records",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Student credentials verified successfully",
+    });
+  } catch (error) {
+    console.error("Student verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Verification failed",
+      error: error.message,
+    });
+  }
+};
+
+/**
  * Register a new student
  * POST /api/auth/register
  */

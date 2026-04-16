@@ -40,6 +40,7 @@ export default function StudentRegister() {
   const [lastName, setLastName] = useState("");
   const [regNumber, setRegNumber] = useState("");
   const [verificationResult, setVerificationResult] = useState<"idle" | "success" | "error">("idle");
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // Step 2: Account setup
   const [password, setPassword] = useState("");
@@ -103,6 +104,44 @@ export default function StudentRegister() {
       setEmailValid(email.endsWith("@klebcahubli.in"));
     } else {
       setEmailValid(null);
+    }
+  };
+
+  const handleVerifyStudent = async () => {
+    setIsVerifying(true);
+    setVerificationResult("idle");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-student`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          registrationNumber: regNumber.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setVerificationResult("error");
+        setIsVerifying(false);
+        return;
+      }
+
+      setVerificationResult("success");
+      setIsVerifying(false);
+      // Proceed to next step after short delay for UX
+      setTimeout(() => {
+        setStep(2);
+      }, 500);
+    } catch (error) {
+      console.error("Verification error:", error);
+      setVerificationResult("error");
+      setIsVerifying(false);
     }
   };
 
@@ -354,10 +393,16 @@ export default function StudentRegister() {
               {step === 1 && (
                 <Button
                   className="flex-1"
-                  onClick={() => setStep(2)}
-                  disabled={!firstName.trim() || !lastName.trim() || !regNumber.trim()}
+                  onClick={handleVerifyStudent}
+                  disabled={!firstName.trim() || !lastName.trim() || !regNumber.trim() || isVerifying}
                 >
-                  Next <ArrowRight className="h-4 w-4 ml-1" />
+                  {isVerifying ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Verifying...
+                    </>
+                  ) : (
+                    <>Next <ArrowRight className="h-4 w-4 ml-1" /></>
+                  )}
                 </Button>
               )}
               {step === 2 && (
