@@ -89,6 +89,23 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: () => new Date().toISOString(),
     },
+    accountStatus: {
+      type: String,
+      enum: ["active", "limited"],
+      default: "limited",
+    },
+    workEmail: {
+      type: String,
+      default: null,
+    },
+    isVerifiedProfessional: {
+      type: Boolean,
+      default: false,
+    },
+    isHigherStudiesVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

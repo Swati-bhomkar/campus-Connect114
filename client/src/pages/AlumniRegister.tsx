@@ -5,21 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import {
-  ArrowLeft, ArrowRight, Check, AlertCircle, CheckCircle2,
-  Briefcase, GraduationCap, Laptop, Clock, Upload, Shield, ShieldCheck, ShieldAlert, ShieldOff,
-  Search, XCircle, FileText, Lock,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 
-const BLOCKED_DOMAINS = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "protonmail.com", "icloud.com", "aol.com", "mail.com", "yandex.com"];
-
-const DOMAINS = [
-  "Software Engineering", "Data Science", "Frontend Development", "Backend Engineering",
-  "Full Stack Development", "DevOps", "Machine Learning", "Cybersecurity",
-  "Product Management", "Mobile Development", "Cloud Computing", "Data Engineering",
-];
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const SKILLS_MAP: Record<string, string[]> = {
   "Software Engineering": ["React", "Node.js", "Java", "Python", "System Design", "DSA", "AWS"],
@@ -36,95 +25,80 @@ const SKILLS_MAP: Record<string, string[]> = {
   "Data Engineering": ["Spark", "Airflow", "Python", "Snowflake", "Kafka", "SQL"],
 };
 
-// Pre-uploaded student/alumni CSV database for verification
-const ALUMNI_DATABASE = [
-  { regNo: "CSE2018001", name: "Rahul Sharma", batch: "2018" },
-  { regNo: "CSE2018002", name: "Priya Patel", batch: "2018" },
-  { regNo: "CSE2019001", name: "Aman Gupta", batch: "2019" },
-  { regNo: "CSE2019002", name: "Sneha Kulkarni", batch: "2019" },
-  { regNo: "CSE2020001", name: "Vikram Desai", batch: "2020" },
-  { regNo: "CSE2020002", name: "Ananya Reddy", batch: "2020" },
-  { regNo: "ISE2019001", name: "Kiran Naik", batch: "2019" },
-  { regNo: "ISE2020001", name: "Megha Joshi", batch: "2020" },
-  { regNo: "ECE2018001", name: "Rohan Hegde", batch: "2018" },
-  { regNo: "ECE2019001", name: "Divya Patil", batch: "2019" },
-];
-
-type AlumniStatus = "working" | "higher_studies" | "freelancer" | "not_working";
-type CollegeVerification = "verified" | "pending" | "none";
-
-const STATUS_OPTIONS: { value: AlumniStatus; label: string; icon: React.ReactNode; desc: string }[] = [
-  { value: "working", label: "Working Professional", icon: <Briefcase className="h-5 w-5" />, desc: "Employed at a company" },
-  { value: "higher_studies", label: "Higher Studies", icon: <GraduationCap className="h-5 w-5" />, desc: "Pursuing further education" },
-  { value: "freelancer", label: "Freelancer / Self-employed", icon: <Laptop className="h-5 w-5" />, desc: "Independent professional" },
-  { value: "not_working", label: "Not Working / Preparing", icon: <Clock className="h-5 w-5" />, desc: "Currently preparing for opportunities" },
-];
-
-const BADGE_INFO: Record<AlumniStatus, { label: string; color: string; icon: React.ReactNode; canRefer: boolean }> = {
-  working: { label: "Verified Professional", color: "text-[hsl(var(--success))]", icon: <ShieldCheck className="h-4 w-4" />, canRefer: true },
-  higher_studies: { label: "Verified Higher Studies", color: "text-primary", icon: <Shield className="h-4 w-4" />, canRefer: false },
-  freelancer: { label: "Self-declared", color: "text-[hsl(var(--warning))]", icon: <ShieldAlert className="h-4 w-4" />, canRefer: false },
-  not_working: { label: "Unverified Alumni", color: "text-muted-foreground", icon: <ShieldOff className="h-4 w-4" />, canRefer: false },
-};
+const BLOCKED_DOMAINS = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "protonmail.com", "icloud.com"];
 
 export default function AlumniRegister() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
 
-  // Step 1: Basic Info
+  // Step 1: Basic Info + College Verification
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [regNumber, setRegNumber] = useState("");
+  const [verificationStatus, setVerificationStatus] = useState<"idle" | "success" | "error">("idle");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+
+  // Step 2: Credentials
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
-  // Step 2: College Verification
   const [collegeEmail, setCollegeEmail] = useState("");
-  const [regNumber, setRegNumber] = useState("");
   const [passOutYear, setPassOutYear] = useState("");
-  const [collegeVerification, setCollegeVerification] = useState<CollegeVerification>("none");
-  const [regVerified, setRegVerified] = useState<boolean | null>(null);
-  const [matchedName, setMatchedName] = useState("");
-  const [collegeDocUploaded, setCollegeDocUploaded] = useState(false);
 
-  // Step 3: Current Status
-  const [currentStatus, setCurrentStatus] = useState<AlumniStatus | "">("");
+  // Step 3: Status Selection
+  const [accountStatus, setAccountStatus] = useState<"working" | "higher_studies" | "freelancer" | "not_working" | "">("");
 
-  // Step 4: Dynamic fields
+  // Step 4: Dynamic Fields
   const [companyName, setCompanyName] = useState("");
   const [workEmail, setWorkEmail] = useState("");
   const [workEmailValid, setWorkEmailValid] = useState<boolean | null>(null);
-  const [documentUploaded] = useState(false);
   const [collegeName, setCollegeName] = useState("");
   const [courseName, setCourseName] = useState("");
-  const [collegeProofUploaded, setCollegeProofUploaded] = useState(false);
-  const [freelanceDomain, setFreelanceDomain] = useState("");
   const [freelanceSkills, setFreelanceSkills] = useState<string[]>([]);
+  const [freelanceDomain, setFreelanceDomain] = useState("");
+  const [summary, setSummary] = useState("");
 
-  // Step 5/6: Domain & Skills
+  // Step 5: Domain & Skills (optional)
   const [domain, setDomain] = useState("");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
+  // Submission
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [submissionSuccess, setSubmissionSuccess] = useState(false);
+
   const passwordsMatch = password.length >= 8 && password === confirmPassword;
 
-  const verifyRegNumber = (reg: string) => {
-    setRegNumber(reg);
-    if (reg.length >= 6) {
-      const match = ALUMNI_DATABASE.find(
-        (s) => s.regNo.toLowerCase() === reg.toLowerCase()
-      );
-      if (match) {
-        setRegVerified(true);
-        setMatchedName(match.name);
-        setCollegeVerification("verified");
+  const handleVerifyAlumni = async () => {
+    setIsVerifying(true);
+    setVerificationError(null);
+    setVerificationStatus("idle");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-alumni`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          registrationNumber: regNumber.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setVerificationStatus("error");
+        setVerificationError(data.message || "Verification failed");
       } else {
-        setRegVerified(false);
-        setMatchedName("");
-        setCollegeVerification("none");
+        setVerificationStatus("success");
+        setTimeout(() => setStep(2), 800);
       }
-    } else {
-      setRegVerified(null);
-      setMatchedName("");
-      setCollegeVerification("none");
+    } catch (error) {
+      setVerificationStatus("error");
+      setVerificationError(error instanceof Error ? error.message : "Verification failed");
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -132,17 +106,11 @@ export default function AlumniRegister() {
     setWorkEmail(email);
     if (email.includes("@") && email.length > 5) {
       const emailDomain = email.split("@")[1]?.toLowerCase();
-      const blocked = BLOCKED_DOMAINS.some((d) => emailDomain === d);
+      const blocked = BLOCKED_DOMAINS.includes(emailDomain);
       setWorkEmailValid(!blocked && emailDomain.includes("."));
     } else {
       setWorkEmailValid(null);
     }
-  };
-
-  const toggleSkill = (skill: string) => {
-    setSelectedSkills((prev) =>
-      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
-    );
   };
 
   const toggleFreelanceSkill = (skill: string) => {
@@ -151,59 +119,67 @@ export default function AlumniRegister() {
     );
   };
 
-  // Steps: 1-Basic, 2-College, 3-Status, 4-DynamicFields, 5-Verification(if needed), 6-Skills
-  const needsVerification = currentStatus === "working" || currentStatus === "higher_studies";
-  const totalSteps = needsVerification ? 6 : 5;
+  const toggleSkill = (skill: string) => {
+    setSelectedSkills((prev) =>
+      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
+    );
+  };
 
-  const getStepTitle = () => {
-    switch (step) {
-      case 1: return "Personal Information";
-      case 2: return "College Verification";
-      case 3: return "Current Status";
-      case 4: return "Professional Details";
-      case 5: return needsVerification ? "Verification" : "Domain & Skills";
-      case 6: return "Domain & Skills";
-      default: return "";
+  const handleRegister = async () => {
+    setIsSubmitting(true);
+    setSubmissionError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register-alumni`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          registrationNumber: regNumber.trim(),
+          password,
+          confirmPassword,
+          collegeEmail: collegeEmail || null,
+          passOutYear: parseInt(passOutYear),
+          accountStatus,
+          companyName: accountStatus === "working" ? companyName : null,
+          workEmail: accountStatus === "working" ? workEmail : null,
+          collegeName: accountStatus === "higher_studies" ? collegeName : null,
+          courseName: accountStatus === "higher_studies" ? courseName : null,
+          freelanceSkills: accountStatus === "freelancer" ? freelanceSkills : [],
+          freelanceDomain: accountStatus === "freelancer" ? freelanceDomain : null,
+          summary: accountStatus === "freelancer" ? summary : null,
+          domain: domain || null,
+          skills: selectedSkills,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Registration failed");
+      }
+
+      setSubmissionSuccess(true);
+      setTimeout(() => navigate("/alumni"), 1500);
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : "Registration failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const getStepDesc = () => {
-    switch (step) {
-      case 1: return "Tell us about yourself";
-      case 2: return "Verify your college identity";
-      case 3: return "What are you doing now?";
-      case 4: return currentStatus === "working" ? "Your current employment details"
-        : currentStatus === "higher_studies" ? "Your current education details"
-        : currentStatus === "freelancer" ? "Your freelance skills & domain"
-        : "We'll match you with relevant opportunities";
-      case 5: return needsVerification
-        ? (currentStatus === "working" ? "Verify your work status" : "Verify your education status")
-        : "Select your professional domain (optional)";
-      case 6: return "Select your professional domain (optional)";
-      default: return "";
+  const canProceedStep4 = () => {
+    if (accountStatus === "working") {
+      return companyName && workEmail && workEmailValid;
     }
-  };
-
-  const isLastStep = () => step === totalSteps;
-  const skillsStep = totalSteps;
-
-  const canProceedStep2 = () => {
-    return (collegeVerification === "verified" || collegeDocUploaded) && passOutYear !== "";
-  };
-
-  const getAccountStatus = () => {
-    if (collegeVerification !== "verified" && !collegeDocUploaded) return { label: "Incomplete", access: "No access" };
-    if (collegeDocUploaded && collegeVerification !== "verified") return { label: "Pending Admin Approval", access: "Limited access — cannot give referrals" };
-    if (currentStatus === "working") {
-      if (workEmailValid || documentUploaded) return { label: "Verified Professional", access: "Full access — can give referrals" };
-      return { label: "Pending Verification", access: "Limited access — cannot give referrals until verified" };
+    if (accountStatus === "higher_studies") {
+      return collegeName && courseName;
     }
-    if (currentStatus === "higher_studies") {
-      if (collegeProofUploaded) return { label: "Verified Higher Studies", access: "Can provide guidance — cannot give referrals" };
-      return { label: "Pending Verification", access: "Limited access" };
+    if (accountStatus === "freelancer") {
+      return freelanceDomain && freelanceSkills.length > 0;
     }
-    if (currentStatus === "freelancer") return { label: "Self-declared", access: "Can provide guidance — cannot give referrals" };
-    return { label: "Unverified Alumni", access: "Limited access — guidance only" };
+    return true; // not_working
   };
 
   return (
@@ -214,14 +190,12 @@ export default function AlumniRegister() {
             CC
           </div>
           <h1 className="text-2xl font-bold text-foreground">Alumni Registration</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Step {Math.min(step, totalSteps)} of {totalSteps}
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Step {step} of 5</p>
         </div>
 
         {/* Progress */}
         <div className="mb-6 flex gap-2">
-          {Array.from({ length: totalSteps }).map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
               className={`h-1.5 flex-1 rounded-full ${i + 1 <= step ? "bg-primary" : "bg-border"}`}
@@ -231,379 +205,373 @@ export default function AlumniRegister() {
 
         <Card>
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg">{getStepTitle()}</CardTitle>
-            <CardDescription>{getStepDesc()}</CardDescription>
+            <CardTitle className="text-lg">
+              {step === 1 && "College Verification"}
+              {step === 2 && "Account Credentials"}
+              {step === 3 && "Current Status"}
+              {step === 4 && "Professional Details"}
+              {step === 5 && "Domain & Skills"}
+            </CardTitle>
+            <CardDescription>
+              {step === 1 && "Verify your college identity"}
+              {step === 2 && "Create your password"}
+              {step === 3 && "What are you doing now?"}
+              {step === 4 && accountStatus === "working" ? "Your employment details"
+                : accountStatus === "higher_studies" ? "Your education details"
+                : accountStatus === "freelancer" ? "Your freelance profile"
+                : "Complete your profile"}
+              {step === 5 && "Select your domain and skills (optional)"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Step 1: Personal Info */}
+            {/* STEP 1: College Verification */}
             {step === 1 && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>First Name</Label>
-                    <Input placeholder="Rahul" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                    <Input
+                      placeholder="Anjali"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      disabled={verificationStatus === "success"}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Last Name</Label>
-                    <Input placeholder="Sharma" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                    <Input
+                      placeholder="Jartarghar"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      disabled={verificationStatus === "success"}
+                    />
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label>Registration Number</Label>
+                  <Input
+                    placeholder="222123"
+                    value={regNumber}
+                    onChange={(e) => setRegNumber(e.target.value)}
+                    disabled={verificationStatus === "success"}
+                  />
+                </div>
+
+                {verificationStatus === "success" && (
+                  <div className="rounded-md border border-green-300 bg-green-50 p-3">
+                    <p className="text-sm text-green-700 flex items-center gap-2 font-medium">
+                      <CheckCircle2 className="h-4 w-4" /> Verification Successful
+                    </p>
+                  </div>
+                )}
+
+                {verificationStatus === "error" && (
+                  <div className="rounded-md border border-red-300 bg-red-50 p-3">
+                    <p className="text-sm text-red-700 flex items-center gap-2 font-medium">
+                      <AlertCircle className="h-4 w-4" /> {verificationError}
+                    </p>
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleVerifyAlumni}
+                  disabled={!firstName || !lastName || !regNumber || isVerifying || verificationStatus === "success"}
+                  className="w-full"
+                >
+                  {isVerifying ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : verificationStatus === "success" ? (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Verified
+                    </>
+                  ) : (
+                    "Verify & Continue"
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* STEP 2: Credentials */}
+            {step === 2 && (
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Password</Label>
-                  <Input type="password" placeholder="Min. 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} />
+                  <Input
+                    type="password"
+                    placeholder="Min. 8 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
                   {password.length > 0 && password.length < 8 && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
+                    <p className="text-xs text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" /> Must be at least 8 characters
                     </p>
                   )}
                 </div>
+
                 <div className="space-y-2">
                   <Label>Confirm Password</Label>
-                  <Input type="password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                  <Input
+                    type="password"
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
                   {confirmPassword.length > 0 && !passwordsMatch && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
+                    <p className="text-xs text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" /> Passwords do not match
                     </p>
                   )}
                   {passwordsMatch && confirmPassword.length > 0 && (
-                    <p className="text-xs text-[hsl(var(--success))] flex items-center gap-1">
+                    <p className="text-xs text-green-600 flex items-center gap-1">
                       <CheckCircle2 className="h-3 w-3" /> Passwords match
                     </p>
                   )}
                 </div>
-              </div>
-            )}
 
-            {/* Step 2: College Verification */}
-            {step === 2 && (
-              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Registration Number <span className="text-destructive">*</span></Label>
-                  <div className="relative">
-                    <Input
-                      placeholder="CSE2020001"
-                      value={regNumber}
-                      onChange={(e) => verifyRegNumber(e.target.value)}
-                      className="pr-10"
-                    />
-                    {regVerified === true && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--success))]" />}
-                    {regVerified === false && <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />}
-                  </div>
-                  {regVerified === true && (
-                    <div className="rounded-md border border-[hsl(var(--success))]/30 bg-[hsl(var(--success))]/5 p-3">
-                      <p className="text-sm text-[hsl(var(--success))] flex items-center gap-2 font-medium">
-                        <CheckCircle2 className="h-4 w-4" /> Match Found — College Verified Alumni
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">Matched: {matchedName}</p>
-                    </div>
-                  )}
-                  {regVerified === false && (
-                    <div className="space-y-3">
-                      <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
-                        <p className="text-sm text-destructive flex items-center gap-2 font-medium">
-                          <XCircle className="h-4 w-4" /> No Match — Registration number not found in college database
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          You can still register by uploading a college document for admin review.
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Upload College ID / Marks Card</Label>
-                        <div
-                          className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 cursor-pointer transition-colors ${
-                            collegeDocUploaded
-                              ? "border-[hsl(var(--success))]/50 bg-[hsl(var(--success))]/5"
-                              : "border-border hover:border-primary/50"
-                          }`}
-                          onClick={() => { setCollegeDocUploaded(true); setCollegeVerification("pending"); }}
-                        >
-                          {collegeDocUploaded ? (
-                            <>
-                              <CheckCircle2 className="h-6 w-6 text-[hsl(var(--success))] mb-1" />
-                              <p className="text-sm font-medium text-foreground">Document uploaded</p>
-                              <p className="text-xs text-muted-foreground">college_id.pdf — Pending admin approval</p>
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-                              <p className="text-sm font-medium text-foreground">Click to upload</p>
-                              <p className="text-xs text-muted-foreground">PDF, JPG, PNG — Max 5MB</p>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  <Label>Pass-out Year</Label>
+                  <Input
+                    type="number"
+                    placeholder="2025"
+                    value={passOutYear}
+                    onChange={(e) => setPassOutYear(e.target.value)}
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Pass-out Year <span className="text-destructive">*</span></Label>
-                  <Select value={passOutYear} onValueChange={setPassOutYear}>
-                    <SelectTrigger><SelectValue placeholder="Select year" /></SelectTrigger>
-                    <SelectContent>
-                      {[2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025].map((y) => (
-                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>College Email <span className="text-xs text-muted-foreground">(optional but preferred)</span></Label>
-                  <Input type="email" placeholder="name@klebcahubli.in" value={collegeEmail} onChange={(e) => setCollegeEmail(e.target.value)} />
-                  {collegeEmail && !collegeEmail.endsWith("@klebcahubli.in") && collegeEmail.includes("@") && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" /> Must end with @klebcahubli.in
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Current Status */}
-            {step === 3 && (
-              <div className="space-y-4">
-                <RadioGroup value={currentStatus} onValueChange={(v) => setCurrentStatus(v as AlumniStatus)}>
-                  {STATUS_OPTIONS.map((opt) => (
-                    <label
-                      key={opt.value}
-                      className={`flex items-center gap-4 rounded-lg border p-4 cursor-pointer transition-colors ${
-                        currentStatus === opt.value
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:bg-secondary/50"
-                      }`}
-                    >
-                      <RadioGroupItem value={opt.value} />
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="text-primary">{opt.icon}</div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{opt.label}</p>
-                          <p className="text-xs text-muted-foreground">{opt.desc}</p>
-                        </div>
-                      </div>
-                    </label>
-                  ))}
-                </RadioGroup>
-
-                {currentStatus && (
-                  <div className={`rounded-md border p-3 flex items-center gap-2 text-sm ${
-                    BADGE_INFO[currentStatus].canRefer ? "border-[hsl(var(--success))]/30 bg-[hsl(var(--success))]/5" : "border-border bg-secondary/30"
-                  }`}>
-                    <span className={BADGE_INFO[currentStatus].color}>{BADGE_INFO[currentStatus].icon}</span>
-                    <div>
-                      <p className={`font-medium ${BADGE_INFO[currentStatus].color}`}>
-                        Badge: {BADGE_INFO[currentStatus].label}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {BADGE_INFO[currentStatus].canRefer
-                          ? "You will be able to give referrals after verification."
-                          : "You can provide career guidance but cannot give referrals."}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Step 4: Dynamic Fields Based on Status */}
-            {step === 4 && currentStatus === "working" && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Company Name <span className="text-destructive">*</span></Label>
-                  <Input placeholder="e.g. Google, Infosys, TCS" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Work Email <span className="text-destructive">*</span></Label>
+                  <Label>College Email (optional)</Label>
                   <Input
                     type="email"
-                    placeholder="name@company.com"
-                    value={workEmail}
-                    onChange={(e) => validateWorkEmail(e.target.value)}
+                    placeholder="name@college.edu"
+                    value={collegeEmail}
+                    onChange={(e) => setCollegeEmail(e.target.value)}
                   />
-                  {workEmailValid === true && (
-                    <p className="text-xs text-[hsl(var(--success))] flex items-center gap-1">
-                      <CheckCircle2 className="h-3 w-3" /> Valid work email domain
-                    </p>
-                  )}
-                  {workEmailValid === false && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" /> Personal email domains (Gmail, Yahoo, etc.) are not allowed
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">Must be a corporate email — no gmail/yahoo/outlook</p>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                  </Button>
+                  <Button
+                    onClick={() => setStep(3)}
+                    disabled={!password || !confirmPassword || !passwordsMatch || !passOutYear}
+                    className="flex-1"
+                  >
+                    Next <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             )}
 
-            {step === 4 && currentStatus === "higher_studies" && (
+            {/* STEP 3: Status Selection */}
+            {step === 3 && (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>University / Institution Name <span className="text-destructive">*</span></Label>
-                  <Input placeholder="e.g. IIT Bombay, MIT" value={collegeName} onChange={(e) => setCollegeName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Course / Program <span className="text-destructive">*</span></Label>
-                  <Input placeholder="e.g. M.Tech Computer Science" value={courseName} onChange={(e) => setCourseName(e.target.value)} />
-                </div>
-              </div>
-            )}
-
-            {step === 4 && currentStatus === "freelancer" && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Primary Domain <span className="text-destructive">*</span></Label>
-                  <Select value={freelanceDomain} onValueChange={(v) => { setFreelanceDomain(v); setFreelanceSkills([]); }}>
-                    <SelectTrigger><SelectValue placeholder="Select your domain" /></SelectTrigger>
-                    <SelectContent>
-                      {DOMAINS.map((d) => (
-                        <SelectItem key={d} value={d}>{d}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {freelanceDomain && (
-                  <div className="space-y-2">
-                    <Label>Key Skills</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {(SKILLS_MAP[freelanceDomain] || []).map((skill) => (
-                        <button
-                          key={skill}
-                          onClick={() => toggleFreelanceSkill(skill)}
-                          className={`inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm transition-colors ${
-                            freelanceSkills.includes(skill)
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-background text-foreground hover:bg-secondary"
-                          }`}
-                        >
-                          {freelanceSkills.includes(skill) && <Check className="h-3 w-3" />}
-                          {skill}
-                        </button>
-                      ))}
+                <RadioGroup value={accountStatus} onValueChange={(val) => setAccountStatus(val as any)}>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2 rounded-lg border p-3 cursor-pointer hover:bg-accent">
+                      <RadioGroupItem value="working" id="working" />
+                      <Label htmlFor="working" className="flex-1 cursor-pointer">
+                        <div className="font-medium">Working Professional</div>
+                        <div className="text-sm text-muted-foreground">Employed at a company</div>
+                      </Label>
                     </div>
+
+                    <div className="flex items-center space-x-2 rounded-lg border p-3 cursor-pointer hover:bg-accent">
+                      <RadioGroupItem value="higher_studies" id="higher_studies" />
+                      <Label htmlFor="higher_studies" className="flex-1 cursor-pointer">
+                        <div className="font-medium">Higher Studies</div>
+                        <div className="text-sm text-muted-foreground">Pursuing further education</div>
+                      </Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2 rounded-lg border p-3 cursor-pointer hover:bg-accent">
+                      <RadioGroupItem value="freelancer" id="freelancer" />
+                      <Label htmlFor="freelancer" className="flex-1 cursor-pointer">
+                        <div className="font-medium">Freelancer / Self-employed</div>
+                        <div className="text-sm text-muted-foreground">Independent professional</div>
+                      </Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2 rounded-lg border p-3 cursor-pointer hover:bg-accent">
+                      <RadioGroupItem value="not_working" id="not_working" />
+                      <Label htmlFor="not_working" className="flex-1 cursor-pointer">
+                        <div className="font-medium">Not Working</div>
+                        <div className="text-sm text-muted-foreground">Currently preparing for opportunities</div>
+                      </Label>
+                    </div>
+                  </div>
+                </RadioGroup>
+
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                  </Button>
+                  <Button onClick={() => setStep(4)} disabled={!accountStatus} className="flex-1">
+                    Next <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 4: Dynamic Fields */}
+            {step === 4 && (
+              <div className="space-y-4">
+                {accountStatus === "working" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Company Name</Label>
+                      <Input
+                        placeholder="Tech Corp Ltd"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Work Email</Label>
+                      <Input
+                        type="email"
+                        placeholder="name@company.com"
+                        value={workEmail}
+                        onChange={(e) => validateWorkEmail(e.target.value)}
+                      />
+                      {workEmail && !workEmailValid && (
+                        <p className="text-xs text-red-600 flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" /> Use your corporate email, not personal
+                        </p>
+                      )}
+                      {workEmailValid && (
+                        <p className="text-xs text-green-600 flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Valid work email
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {accountStatus === "higher_studies" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>College/University Name</Label>
+                      <Input
+                        placeholder="University of Example"
+                        value={collegeName}
+                        onChange={(e) => setCollegeName(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Course Name</Label>
+                      <Input
+                        placeholder="M.Tech Computer Science"
+                        value={courseName}
+                        onChange={(e) => setCourseName(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {accountStatus === "freelancer" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Domain/Specialization</Label>
+                      <Input
+                        placeholder="Web Development"
+                        value={freelanceDomain}
+                        onChange={(e) => setFreelanceDomain(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Skills (select at least 1)</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {["React", "Node.js", "Python", "Java", "AWS", "Docker", "UI/UX", "Data Analysis"].map(
+                          (skill) => (
+                            <button
+                              key={skill}
+                              onClick={() => toggleFreelanceSkill(skill)}
+                              className={`rounded border px-3 py-2 text-sm transition ${
+                                freelanceSkills.includes(skill)
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-border bg-background hover:bg-accent"
+                              }`}
+                            >
+                              {skill}
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>About Your Work</Label>
+                      <Input
+                        placeholder="Brief summary of your freelance work"
+                        value={summary}
+                        onChange={(e) => setSummary(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {accountStatus === "not_working" && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                    <p className="text-sm text-blue-700">
+                      You can update your status and details later when your situation changes.
+                    </p>
                   </div>
                 )}
-              </div>
-            )}
 
-            {step === 4 && currentStatus === "not_working" && (
-              <div className="space-y-4">
-                <div className="rounded-md border border-border bg-secondary/30 p-4 text-center">
-                  <Clock className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-sm font-medium text-foreground">No additional details required</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    You'll be assigned the <strong>Unverified Alumni</strong> badge. You can update your status later when your situation changes.
-                  </p>
-                </div>
-                <div className="rounded-md border border-border bg-secondary/10 p-3 flex items-center gap-2 text-sm">
-                  <Lock className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">
-                    Unverified alumni have limited access — you can browse and receive guidance but cannot give referrals.
-                  </p>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                  </Button>
+                  <Button onClick={() => setStep(5)} disabled={!canProceedStep4()} className="flex-1">
+                    Next <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             )}
 
-            {/* Step 5: Verification (Working Professional) */}
-            {step === 5 && needsVerification && currentStatus === "working" && (
-              <div className="space-y-4">
-                <div className="space-y-3">
-                  <div className="rounded-md border border-primary/20 bg-primary/5 p-3">
-                    <p className="text-sm text-foreground flex items-center gap-2">
-                      <Search className="h-4 w-4 text-primary" />
-                      Verifying: <strong>{workEmail || "—"}</strong>
-                    </p>
-                    {workEmailValid && companyName && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Domain matches company profile for <strong>{companyName}</strong>
-                      </p>
-                    )}
-                  </div>
-                  {workEmailValid ? (
-                    <div className="rounded-md border border-[hsl(var(--success))]/30 bg-[hsl(var(--success))]/5 p-3">
-                      <p className="text-sm text-[hsl(var(--success))] flex items-center gap-2 font-medium">
-                        <CheckCircle2 className="h-4 w-4" /> Work email verified
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        A verification link will be sent to {workEmail}. Badge: <strong>Verified Professional</strong>
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="rounded-md border border-border bg-secondary/30 p-3">
-                      <p className="text-sm text-muted-foreground flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4" /> Enter a valid work email in Step 4 to verify via email
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Step 5: Verification (Higher Studies) */}
-            {step === 5 && needsVerification && currentStatus === "higher_studies" && (
-              <div className="space-y-4">
-                <div className="rounded-md border border-primary/20 bg-primary/5 p-3">
-                  <p className="text-sm text-foreground">
-                    Verifying enrollment at <strong>{collegeName || "—"}</strong>
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">Program: {courseName || "—"}</p>
-                </div>
-                <div className="space-y-3">
-                  <Label>Upload College ID / Admission Letter</Label>
-                  <div
-                    className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 cursor-pointer transition-colors ${
-                      collegeProofUploaded
-                        ? "border-[hsl(var(--success))]/50 bg-[hsl(var(--success))]/5"
-                        : "border-border hover:border-primary/50"
-                    }`}
-                    onClick={() => setCollegeProofUploaded(true)}
-                  >
-                    {collegeProofUploaded ? (
-                      <>
-                        <CheckCircle2 className="h-8 w-8 text-[hsl(var(--success))] mb-2" />
-                        <p className="text-sm font-medium text-foreground">Document uploaded</p>
-                        <p className="text-xs text-muted-foreground">college_id.pdf — Pending admin review</p>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                        <p className="text-sm font-medium text-foreground">Click to upload</p>
-                        <p className="text-xs text-muted-foreground">PDF, JPG, PNG — Max 5MB</p>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Final Step: Domain & Skills */}
-            {step === skillsStep && (
+            {/* STEP 5: Domain & Skills */}
+            {step === 5 && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Domain</Label>
-                  <Select value={domain} onValueChange={(v) => { setDomain(v); setSelectedSkills([]); }}>
-                    <SelectTrigger><SelectValue placeholder="Select your domain" /></SelectTrigger>
+                  <Label>Professional Domain (optional)</Label>
+                  <Select value={domain} onValueChange={setDomain}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a domain" />
+                    </SelectTrigger>
                     <SelectContent>
-                      {DOMAINS.map((d) => (
-                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      {Object.keys(SKILLS_MAP).map((d) => (
+                        <SelectItem key={d} value={d}>
+                          {d}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
                 {domain && (
                   <div className="space-y-2">
-                    <Label>Skills (select all that apply)</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {(SKILLS_MAP[domain] || []).map((skill) => (
+                    <Label>Skills</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {SKILLS_MAP[domain]?.map((skill) => (
                         <button
                           key={skill}
                           onClick={() => toggleSkill(skill)}
-                          className={`inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm transition-colors ${
+                          className={`rounded border px-3 py-2 text-sm transition ${
                             selectedSkills.includes(skill)
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-background text-foreground hover:bg-secondary"
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-background hover:bg-accent"
                           }`}
                         >
-                          {selectedSkills.includes(skill) && <Check className="h-3 w-3" />}
                           {skill}
                         </button>
                       ))}
@@ -611,82 +579,56 @@ export default function AlumniRegister() {
                   </div>
                 )}
 
-                {/* Account Status Summary */}
-                <div className="mt-4 rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
-                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <FileText className="h-4 w-4" /> Account Summary
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Name</span>
-                      <span className="text-foreground font-medium">{firstName} {lastName}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">College Status</span>
-                      <Badge variant={collegeVerification === "verified" ? "default" : "outline"} className="text-xs">
-                        {collegeVerification === "verified" ? "College Verified" : "Pending Approval"}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Current Status</span>
-                      <span className="text-foreground text-xs">{STATUS_OPTIONS.find(o => o.value === currentStatus)?.label || "—"}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Verification Badge</span>
-                      {currentStatus && (
-                        <span className={`flex items-center gap-1 text-xs font-medium ${BADGE_INFO[currentStatus].color}`}>
-                          {BADGE_INFO[currentStatus].icon} {BADGE_INFO[currentStatus].label}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Access Level</span>
-                      <span className="text-xs text-foreground">{getAccountStatus().access.split("—")[0]}</span>
-                    </div>
+                {submissionError && (
+                  <div className="rounded-md border border-red-300 bg-red-50 p-3">
+                    <p className="text-sm text-red-700 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" /> {submissionError}
+                    </p>
                   </div>
-                  {currentStatus && !BADGE_INFO[currentStatus].canRefer && (
-                    <div className="rounded-md border border-border bg-secondary/30 p-2 flex items-center gap-2">
-                      <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <p className="text-xs text-muted-foreground">
-                        Referral privileges require <strong>Verified Professional</strong> status.
-                      </p>
-                    </div>
-                  )}
+                )}
+
+                {submissionSuccess && (
+                  <div className="rounded-md border border-green-300 bg-green-50 p-3">
+                    <p className="text-sm text-green-700 flex items-center gap-2 font-medium">
+                      <CheckCircle2 className="h-4 w-4" /> Registration successful! Redirecting to login...
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setStep(4)} className="flex-1">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                  </Button>
+                  <Button
+                    onClick={handleRegister}
+                    disabled={isSubmitting || submissionSuccess}
+                    className="flex-1"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating Account...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        Complete Registration
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             )}
-
-            {/* Navigation buttons */}
-            <div className="mt-6 flex gap-3">
-              {step > 1 && (
-                <Button variant="outline" onClick={() => setStep(step - 1)}>
-                  <ArrowLeft className="h-4 w-4 mr-1" /> Back
-                </Button>
-              )}
-              {isLastStep() ? (
-                <Button className="flex-1" onClick={() => navigate("/alumni")}>
-                  Create Account
-                </Button>
-              ) : (
-                <Button
-                  className="flex-1"
-                  onClick={() => setStep(step + 1)}
-                  disabled={
-                    (step === 2 && !canProceedStep2()) ||
-                    (step === 3 && !currentStatus)
-                  }
-                >
-                  Next <ArrowRight className="h-4 w-4 ml-1" />
-                </Button>
-              )}
-            </div>
           </CardContent>
         </Card>
 
-        <p className="mt-4 text-center text-xs text-muted-foreground">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <button className="text-primary hover:underline" onClick={() => navigate("/login", { state: { role: "alumni" } })}>
-            Sign In
+          <button
+            onClick={() => navigate("/login")}
+            className="font-medium text-primary hover:underline"
+          >
+            Sign in
           </button>
         </p>
       </div>

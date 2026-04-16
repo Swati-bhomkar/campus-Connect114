@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import bcryptjs from "bcryptjs";
 import User from "../models/User.js";
+import { verifyAlumni } from "../config/alumniDatabase.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -260,6 +261,204 @@ export const loginUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Login failed",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Verify alumni credentials against CSV database
+ * POST /api/auth/verify-alumni
+ */
+export const verifyAlumniCredentials = async (req, res) => {
+  try {
+    const { firstName, lastName, registrationNumber } = req.body;
+
+    // Validation: Check required fields
+    if (!firstName || !lastName || !registrationNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "First name, last name, and registration number are required",
+      });
+    }
+
+    // Verify alumni against CSV database
+    const alumniExists = verifyAlumni(firstName, lastName, registrationNumber);
+    if (!alumniExists) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized in the college database",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Alumni credentials verified successfully",
+    });
+  } catch (error) {
+    console.error("Alumni verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Verification failed",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Register a new alumni
+ * POST /api/auth/register-alumni
+ */
+export const registerAlumni = async (req, res) => {
+  try {
+    const {
+      firstName,
+      lastName,
+      registrationNumber,
+      password,
+      confirmPassword,
+      collegeEmail,
+      passOutYear,
+      accountStatus,
+      companyName,
+      workEmail,
+      collegeName,
+      courseName,
+      freelanceSkills,
+      freelanceDomain,
+      summary,
+      domain,
+      skills,
+    } = req.body;
+
+    // Validation: Check required fields
+    if (!firstName || !lastName || !registrationNumber || !password || !passOutYear) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields",
+      });
+    }
+
+    // Validation: Passwords match
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
+    }
+
+    // Validation: Password length
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters",
+      });
+    }
+
+    // Validation: Verify alumni against CSV database
+    const alumniExists = verifyAlumni(firstName, lastName, registrationNumber);
+    if (!alumniExists) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized in the college database",
+      });
+    }
+
+    // Validation: Check if registration number already used
+    const existingReg = await User.findOne({ registrationNumber });
+    if (existingReg) {
+      return res.status(409).json({
+        success: false,
+        message: "Registration number already registered",
+      });
+    }
+
+    // Validation: If working, validate workEmail
+    if (accountStatus === "working") {
+      if (!workEmail) {
+        return res.status(400).json({
+          success: false,
+          message: "Work email is required for working professionals",
+        });
+      }
+      const blockedDomains = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "protonmail.com", "icloud.com", "aol.com", "mail.com", "yandex.com"];
+      const workEmailDomain = workEmail.split("@")[1]?.toLowerCase();
+      if (blockedDomains.includes(workEmailDomain)) {
+        return res.status(400).json({
+          success: false,
+          message: "Work email cannot be a personal email domain",
+        });
+      }
+    }
+
+    // Validation: If higher_studies, validate collegeName and courseName
+    if (accountStatus === "higher_studies") {
+      if (!collegeName || !courseName) {
+        return res.status(400).json({
+          success: false,
+          message: "College name and course name are required",
+        });
+      }
+    }
+
+    // Hash password
+    const hashedPassword = await bcryptjs.hash(password, 10);
+
+    // Generate avatar URL
+    const avatarUrl = generateAvatarUrl(`${firstName} ${lastName}`);
+
+    // Determine verification status based on accountStatus
+    let isVerifiedProfessional = false;
+    let isHigherStudiesVerified = false;
+
+    if (accountStatus === "working") {
+      isVerifiedProfessional = true;
+    } else if (accountStatus === "higher_studies") {
+      isHigherStudiesVerified = true;
+    }
+
+    // Prepare user data for alumni
+    const userData = {
+      name: `${firstName} ${lastName}`,
+      collegEmail: collegeEmail?.toLowerCase() || null,
+      password: hashedPassword,
+      registrationNumber,
+      role: "alumni",
+      domain: domain || "Not Specified",
+      skills: skills || [],
+      passOutYear: parseInt(passOutYear),
+      reputationScore: 0,
+      referralCount: 0,
+      availableForReferrals: accountStatus === "working",
+      avatar: avatarUrl,
+      joinedAt: new Date().toISOString(),
+      accountStatus: accountStatus === "working" ? "active" : "limited",
+      workEmail: workEmail || null,
+      isVerifiedProfessional,
+      isHigherStudiesVerified,
+      // Store additional status-specific info
+      company: companyName || null,
+      currentStatus: accountStatus === "working" ? "working" : "studying",
+    };
+
+    // Create user
+    const newUser = new User(userData);
+    await newUser.save();
+
+    // Return success response (exclude password)
+    const userResponse = newUser.toObject();
+    delete userResponse.password;
+
+    res.status(201).json({
+      success: true,
+      message: "Alumni registration successful",
+      user: userResponse,
+    });
+  } catch (error) {
+    console.error("Alumni registration error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Alumni registration failed",
       error: error.message,
     });
   }
