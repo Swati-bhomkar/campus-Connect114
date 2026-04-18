@@ -43,7 +43,7 @@ export const getAllUsers = async (req, res) => {
     const userList = users.map(user => ({
       ...user,
       id: user._id.toString(),
-      status: user.accountStatus,
+      email: user.collegEmail,
     }));
 
     res.status(200).json({
@@ -55,6 +55,116 @@ export const getAllUsers = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch users",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Search users with filters
+ * GET /api/users/search
+ */
+export const searchUsers = async (req, res) => {
+  try {
+    const { search, role, domain, company, passOutYear, availableOnly } = req.query;
+    const currentUserId = req.user._id;
+
+    // Build filter object - always exclude current user and admins
+    const filter = {
+      _id: { $ne: currentUserId },
+      role: { $ne: "admin" },
+    };
+
+    if (role && role !== "all") {
+      filter.role = role;
+    }
+    if (domain && domain !== "all") {
+      filter.domain = domain;
+    }
+    if (company && company !== "all") {
+      filter.company = company;
+    }
+    if (passOutYear && passOutYear !== "all") {
+      filter.passOutYear = Number(passOutYear);
+    }
+    if (availableOnly === "true") {
+      filter.availableForReferrals = true;
+    }
+
+    // Text search on name and skills
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { skills: { $in: [new RegExp(search, "i")] } }
+      ];
+    }
+
+    const users = await User.find(filter)
+      .select("-password")
+      .sort({ reputationScore: -1 })
+      .lean();
+
+    // Map _id to id and collegEmail to email
+    const userList = users.map(user => ({
+      ...user,
+      id: user._id.toString(),
+      email: user.collegEmail,
+    }));
+
+    res.status(200).json({
+      success: true,
+      users: userList,
+    });
+  } catch (error) {
+    console.error("Search users error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to search users",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get user by ID
+ * GET /api/users/:id
+ */
+export const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required",
+      });
+    }
+
+    const user = await User.findById(id).select("-password").lean();
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Map _id to id and collegEmail to email
+    const userResponse = {
+      ...user,
+      id: user._id.toString(),
+      email: user.collegEmail,
+    };
+
+    res.status(200).json({
+      success: true,
+      user: userResponse,
+    });
+  } catch (error) {
+    console.error("Get user by ID error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get user",
       error: error.message,
     });
   }

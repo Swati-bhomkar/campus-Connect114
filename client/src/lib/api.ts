@@ -58,6 +58,58 @@ export const getAllUsers = async () => {
 };
 
 /**
+ * Search users with filters
+ */
+export const searchUsers = async (filters: {
+  search?: string;
+  role?: string;
+  domain?: string;
+  company?: string;
+  passOutYear?: string;
+  availableOnly?: boolean;
+}) => {
+  const params = new URLSearchParams();
+  
+  if (filters.search) params.append("search", filters.search);
+  if (filters.role && filters.role !== "all") params.append("role", filters.role);
+  if (filters.domain && filters.domain !== "all") params.append("domain", filters.domain);
+  if (filters.company && filters.company !== "all") params.append("company", filters.company);
+  if (filters.passOutYear && filters.passOutYear !== "all") params.append("passOutYear", filters.passOutYear);
+  if (filters.availableOnly) params.append("availableOnly", "true");
+
+  const response = await fetch(`${API_BASE_URL}/api/users/search?${params}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to search users");
+  }
+
+  return data.users;
+};
+
+/**
+ * Get user by ID
+ */
+export const getUserById = async (id: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get user");
+  }
+
+  return data.user;
+};
+
+/**
  * Update current user profile
  */
 export const updateCurrentUser = async (userData: {

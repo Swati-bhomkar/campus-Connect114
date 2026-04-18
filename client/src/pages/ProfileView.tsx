@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PostCard } from "@/components/PostCard";
 import { ReputationBadge, VerificationBadge, AvailabilityIndicator } from "@/components/StatusBadges";
-import { getUserById, getPostsByAuthor, USERS } from "@/lib/mock-data";
-import { getCurrentUser } from "@/lib/api";
+import { getUserById as getUserByIdAPI, getCurrentUser } from "@/lib/api";
 import { renderAvatar } from "@/lib/utils";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, UserPlus, Eye } from "lucide-react";
 import type { User } from "@/lib/mock-data";
@@ -25,9 +24,9 @@ const NAV = [
 export default function ProfileView() {
   const { id } = useParams();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const user = getUserById(id || "");
+  const [userLoading, setUserLoading] = useState(true);
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
@@ -36,8 +35,6 @@ export default function ProfileView() {
         setCurrentUser(userData);
       } catch (error) {
         console.error("Failed to fetch current user:", error);
-        // Fallback to mock user for now
-        setCurrentUser(USERS.find(u => u.id === "u4") || null);
       } finally {
         setLoading(false);
       }
@@ -46,11 +43,39 @@ export default function ProfileView() {
     fetchCurrentUser();
   }, []);
 
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (!id) return;
+      try {
+        setUserLoading(true);
+        const userData = await getUserByIdAPI(id);
+        setUser(userData);
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+        setUser(null);
+      } finally {
+        setUserLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [id]);
+
   if (loading || !currentUser) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-muted-foreground">Loading...</p>
       </div>
+    );
+  }
+
+  if (userLoading) {
+    return (
+      <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Loading user...</p>
+        </div>
+      </DashboardLayout>
     );
   }
 
@@ -64,7 +89,7 @@ export default function ProfileView() {
     );
   }
 
-  const userPosts = getPostsByAuthor(user.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const userPosts = []; // TODO: Implement posts fetching
 
   return (
     <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>
@@ -124,7 +149,7 @@ export default function ProfileView() {
           </CardContent>
         </Card>
 
-        {/* User's Posts */}
+        {/* User's Posts - Temporarily disabled */}
         {userPosts.length > 0 && (
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-foreground mb-4">Posts by {user.name}</h3>
