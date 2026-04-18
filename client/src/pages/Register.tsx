@@ -310,7 +310,7 @@ export default function StudentRegister() {
                       <SelectValue placeholder="Select year" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[2026, 2027, 2028, 2029, 2030].map((y) => (
+                      {[2026, 2027, 2028].map((y) => (
                         <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                       ))}
                     </SelectContent>
