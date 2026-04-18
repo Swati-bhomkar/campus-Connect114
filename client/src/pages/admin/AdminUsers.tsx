@@ -1,16 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { USERS } from "@/lib/mock-data";
+import { getAllUsers } from "@/lib/api";
 import { LayoutDashboard, Users, BadgeCheck, BarChart3, ShieldAlert, Settings, Search, MoreHorizontal } from "lucide-react";
 import { ReputationBadge, VerificationBadge } from "@/components/StatusBadges";
-import { cn } from "@/lib/utils";
+import { renderAvatar } from "@/lib/utils";
 
-const ADMIN = USERS.find(u => u.id === "u15")!;
+const ADMIN = { name: "Admin", avatar: "A" };
 const NAV = [
   { title: "Overview", url: "/admin", icon: LayoutDashboard },
   { title: "Users", url: "/admin/users", icon: Users },
@@ -23,8 +23,29 @@ const NAV = [
 export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = USERS.filter(u => {
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const backendUsers = await getAllUsers();
+        setUsers(backendUsers);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load users");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  const filtered = users.filter(u => {
     if (u.role === "admin") return false;
     if (search && !u.name.toLowerCase().includes(search.toLowerCase()) && !u.email.toLowerCase().includes(search.toLowerCase())) return false;
     if (roleFilter !== "all" && u.role !== roleFilter) return false;
@@ -65,11 +86,29 @@ export default function AdminUsers() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map(u => (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={7}>
+                  <p className="py-6 text-center text-sm text-muted-foreground">Loading users...</p>
+                </TableCell>
+              </TableRow>
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={7}>
+                  <p className="py-6 text-center text-sm text-destructive">{error}</p>
+                </TableCell>
+              </TableRow>
+            ) : filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7}>
+                  <p className="py-6 text-center text-sm text-muted-foreground">No users found.</p>
+                </TableCell>
+              </TableRow>
+            ) : filtered.map(u => (
               <TableRow key={u.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">{u.avatar}</div>
+                    {renderAvatar(u.avatar, u.name, "h-8 w-8 text-xs")}
                     <div>
                       <p className="text-sm font-medium text-foreground">{u.name}</p>
                       <p className="text-xs text-muted-foreground">{u.email}</p>

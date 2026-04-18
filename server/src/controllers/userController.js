@@ -1,3 +1,5 @@
+import User from "../models/User.js";
+
 /**
  * Get current user profile
  * GET /api/me
@@ -19,6 +21,40 @@ export const getCurrentUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to get user data",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get all users for admin
+ * GET /api/users
+ */
+export const getAllUsers = async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: admin access required",
+      });
+    }
+
+    const users = await User.find({}).select("-password").lean();
+    const userList = users.map(user => ({
+      ...user,
+      id: user._id.toString(),
+      status: user.accountStatus,
+    }));
+
+    res.status(200).json({
+      success: true,
+      users: userList,
+    });
+  } catch (error) {
+    console.error("Get all users error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch users",
       error: error.message,
     });
   }

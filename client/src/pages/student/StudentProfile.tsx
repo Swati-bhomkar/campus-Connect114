@@ -192,7 +192,7 @@ export default function StudentProfile() {
         <div className="grid gap-4 sm:grid-cols-2 mb-6">
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Email</CardTitle></CardHeader>
-            <CardContent className="pt-0"><p className="text-sm font-medium">{user.collegEmail}</p></CardContent>
+            <CardContent className="pt-0"><p className="text-sm font-medium">{user.email}</p></CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Registration Number</CardTitle></CardHeader>

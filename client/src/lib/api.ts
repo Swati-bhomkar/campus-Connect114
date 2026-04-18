@@ -37,6 +37,27 @@ export const getCurrentUser = async () => {
 };
 
 /**
+ * Get all users for admin
+ */
+export const getAllUsers = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/users`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to fetch users");
+  }
+
+  return data.users.map((user: any) => ({
+    ...user,
+    id: user._id,
+  }));
+};
+
+/**
  * Update current user profile
  */
 export const updateCurrentUser = async (userData: {
