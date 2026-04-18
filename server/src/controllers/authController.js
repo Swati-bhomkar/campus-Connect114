@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import bcryptjs from "bcryptjs";
+import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { verifyAlumni } from "../config/alumniDatabase.js";
 
@@ -160,9 +161,6 @@ export const registerStudent = async (req, res) => {
     // Hash password
     const hashedPassword = await bcryptjs.hash(password, 10);
 
-    // Generate avatar URL
-    const avatarUrl = generateAvatarUrl(`${firstName} ${lastName}`);
-
     // Prepare user data with defaults
     const userData = {
       name: `${firstName} ${lastName}`,
@@ -179,13 +177,20 @@ export const registerStudent = async (req, res) => {
       reputationScore: 0,
       referralCount: 0,
       availableForReferrals: false,
-      avatar: avatarUrl,
+      avatar: "",
       joinedAt: new Date().toISOString(),
     };
 
     // Create user
     const newUser = new User(userData);
     await newUser.save();
+
+    // Generate JWT token for the newly registered user
+    const token = jwt.sign(
+      { id: newUser._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
     // Return success response (exclude password)
     const userResponse = newUser.toObject();
@@ -194,6 +199,7 @@ export const registerStudent = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Registration successful",
+      token,
       user: userResponse,
     });
   } catch (error) {
@@ -247,6 +253,13 @@ export const loginUser = async (req, res) => {
       });
     }
 
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
     // Return success response (exclude password)
     const userResponse = user.toObject();
     delete userResponse.password;
@@ -254,6 +267,7 @@ export const loginUser = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Login successful",
+      token,
       user: userResponse,
     });
   } catch (error) {
@@ -404,9 +418,6 @@ export const registerAlumni = async (req, res) => {
     // Hash password
     const hashedPassword = await bcryptjs.hash(password, 10);
 
-    // Generate avatar URL
-    const avatarUrl = generateAvatarUrl(`${firstName} ${lastName}`);
-
     // Determine verification status based on accountStatus
     let isVerifiedProfessional = false;
     let isHigherStudiesVerified = false;
@@ -430,7 +441,7 @@ export const registerAlumni = async (req, res) => {
       reputationScore: 0,
       referralCount: 0,
       availableForReferrals: accountStatus === "working",
-      avatar: avatarUrl,
+      avatar: "",
       joinedAt: new Date().toISOString(),
       accountStatus: accountStatus === "working" ? "active" : "limited",
       workEmail: workEmail || null,
@@ -445,6 +456,13 @@ export const registerAlumni = async (req, res) => {
     const newUser = new User(userData);
     await newUser.save();
 
+    // Generate JWT token for the newly registered alumni
+    const token = jwt.sign(
+      { id: newUser._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
     // Return success response (exclude password)
     const userResponse = newUser.toObject();
     delete userResponse.password;
@@ -452,6 +470,7 @@ export const registerAlumni = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Alumni registration successful",
+      token,
       user: userResponse,
     });
   } catch (error) {

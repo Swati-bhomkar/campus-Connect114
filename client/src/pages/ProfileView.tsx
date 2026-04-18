@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { PostCard } from "@/components/PostCard";
 import { ReputationBadge, VerificationBadge, AvailabilityIndicator } from "@/components/StatusBadges";
 import { getUserById, getPostsByAuthor, USERS } from "@/lib/mock-data";
-import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, UserPlus, Eye } from "lucide-react";
+import { getCurrentUser } from "@/lib/api";
+import { renderAvatar } from "@/lib/utils";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, UserPlus, Eye } from "lucide-react";
+import type { User } from "@/lib/mock-data";
 
 const NAV = [
   { title: "Overview", url: "/student", icon: LayoutDashboard },
@@ -15,18 +19,44 @@ const NAV = [
   { title: "My Referrals", url: "/student/referrals", icon: FileText },
   { title: "Posts", url: "/student/posts", icon: Newspaper },
   { title: "Create Post", url: "/student/create-post", icon: PlusCircle },
-  { title: "My Profile", url: "/student/profile", icon: User },
+  { title: "My Profile", url: "/student/profile", icon: UserIcon },
 ];
-
-const CURRENT = USERS.find(u => u.id === "u4")!;
 
 export default function ProfileView() {
   const { id } = useParams();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const user = getUserById(id || "");
+
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const userData = await getCurrentUser();
+        setCurrentUser(userData);
+      } catch (error) {
+        console.error("Failed to fetch current user:", error);
+        // Fallback to mock user for now
+        setCurrentUser(USERS.find(u => u.id === "u4") || null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCurrentUser();
+  }, []);
+
+  if (loading || !currentUser) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
-      <DashboardLayout navItems={NAV} groupLabel="Student" userName={CURRENT.name} userRole="Student" userAvatar={CURRENT.avatar} currentUser={CURRENT}>
+      <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>
         <div className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">User not found</p>
         </div>
@@ -37,12 +67,12 @@ export default function ProfileView() {
   const userPosts = getPostsByAuthor(user.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Student" userName={CURRENT.name} userRole="Student" userAvatar={CURRENT.avatar} currentUser={CURRENT}>
+    <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>
       <div className="max-w-2xl mx-auto">
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex items-start gap-5">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xl font-bold">{user.avatar}</div>
+              {renderAvatar(user.avatar, user.name)}
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-lg font-bold text-foreground">{user.name}</h3>

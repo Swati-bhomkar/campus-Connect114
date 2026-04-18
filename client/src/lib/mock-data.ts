@@ -282,3 +282,6 @@ export const ANALYTICS = {
     { month: "Mar", sent: 18, accepted: 6 },
   ],
 };
+
+// Utility functions
+// Note: getUserById and getPostsByAuthor are already defined above

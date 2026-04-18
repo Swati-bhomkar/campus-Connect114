@@ -9,10 +9,14 @@ import { ArrowLeft, AlertCircle, Loader2 } from "lucide-react";
 // API Base URL configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+interface LocationState {
+  role?: "student" | "alumni" | "admin";
+}
+
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const role = (location.state as any)?.role || "student";
+  const role = (location.state as LocationState)?.role || "student";
   
   const [loginType, setLoginType] = useState<"email" | "regnum">("email");
   const [email, setEmail] = useState("");
@@ -46,6 +50,9 @@ export default function Login() {
       if (!response.ok) {
         throw new Error(data.message || "Login failed");
       }
+
+      // Store token in localStorage
+      localStorage.setItem("token", data.token);
 
       // Login successful - redirect to appropriate dashboard
       if (showAdminLogin) {

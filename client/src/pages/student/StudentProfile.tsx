@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { PostCard } from "@/components/PostCard";
 import { ReputationBadge } from "@/components/StatusBadges";
-import { USERS, POSTS, type Post } from "@/lib/mock-data";
-import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Pencil } from "lucide-react";
+import { POSTS, type Post, type User } from "@/lib/mock-data";
+import { getCurrentUser, updateCurrentUser } from "@/lib/api";
+import { renderAvatar } from "@/lib/utils";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
 
 const NAV = [
@@ -16,68 +20,216 @@ const NAV = [
   { title: "My Referrals", url: "/student/referrals", icon: FileText },
   { title: "Posts", url: "/student/posts", icon: Newspaper },
   { title: "Create Post", url: "/student/create-post", icon: PlusCircle },
-  { title: "My Profile", url: "/student/profile", icon: User },
+  { title: "My Profile", url: "/student/profile", icon: UserIcon },
 ];
 
-const STUDENT = USERS.find(u => u.id === "u4")!;
-
 export default function StudentProfile() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [posts, setPosts] = useState<Post[]>(() =>
-    POSTS.filter(p => p.authorId === STUDENT.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  );
+  const [editData, setEditData] = useState({
+    name: "",
+    bio: "",
+    skills: [] as string[],
+    avatar: "",
+  });
+  const [saving, setSaving] = useState(false);
 
-  const handleDelete = (postId: string) => {
-    setPosts(prev => prev.filter(p => p.id !== postId));
-    toast.success("Post deleted successfully");
+  const posts = POSTS.filter(p => p.authorId === user?.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await getCurrentUser();
+        setUser(userData);
+        setEditData({
+          name: userData.name,
+          bio: userData.bio || "",
+          skills: userData.skills || [],
+          avatar: userData.avatar || "",
+        });
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+        toast.error("Failed to load profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  const handleSave = async () => {
+    if (!user) return;
+
+    setSaving(true);
+    try {
+      const updatedUser = await updateCurrentUser(editData);
+      setUser(updatedUser);
+      setEditing(false);
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+      toast.error("Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
   };
 
+  const handleCancel = () => {
+    if (user) {
+      setEditData({
+        name: user.name,
+        bio: user.bio || "",
+        skills: user.skills || [],
+        avatar: user.avatar || "",
+      });
+    }
+    setEditing(false);
+  };
+
+  const handleSkillChange = (index: number, value: string) => {
+    const newSkills = [...editData.skills];
+    newSkills[index] = value;
+    setEditData({ ...editData, skills: newSkills });
+  };
+
+  const addSkill = () => {
+    setEditData({ ...editData, skills: [...editData.skills, ""] });
+  };
+
+  const removeSkill = (index: number) => {
+    const newSkills = editData.skills.filter((_, i) => i !== index);
+    setEditData({ ...editData, skills: newSkills });
+  };
+
+  if (loading || !user) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Student" userName={STUDENT.name} userRole="Student" userAvatar={STUDENT.avatar} currentUser={STUDENT}>
+    <DashboardLayout navItems={NAV} groupLabel="Student" userName={user.name} userRole="Student" userAvatar={user.avatar} currentUser={user}>
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-foreground">My Profile</h2>
-          <Button variant="outline" size="sm" onClick={() => setEditing(!editing)}>
-            <Pencil className="h-3.5 w-3.5 mr-1.5" /> {editing ? "Cancel" : "Edit"}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => editing ? handleCancel() : setEditing(true)}
+            disabled={saving}
+          >
+            {editing ? (
+              <>
+                <X className="h-3.5 w-3.5 mr-1.5" /> Cancel
+              </>
+            ) : (
+              <>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+              </>
+            )}
           </Button>
         </div>
 
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex items-start gap-5">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xl font-bold">
-                {STUDENT.avatar}
-              </div>
+              {editing ? (
+                <div className="flex flex-col gap-2">
+                  {renderAvatar(editData.avatar, editData.name)}
+                  <Input
+                    placeholder="Avatar URL"
+                    value={editData.avatar}
+                    onChange={(e) => setEditData({ ...editData, avatar: e.target.value })}
+                    className="w-32 text-xs"
+                  />
+                </div>
+              ) : (
+                renderAvatar(user.avatar, user.name)
+              )}
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-lg font-bold text-foreground">{STUDENT.name}</h3>
-                  <ReputationBadge score={STUDENT.reputationScore} />
+                  {editing ? (
+                    <Input
+                      value={editData.name}
+                      onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                      className="text-lg font-bold"
+                    />
+                  ) : (
+                    <h3 className="text-lg font-bold text-foreground">{user.name}</h3>
+                  )}
+                  <ReputationBadge score={user.reputationScore} />
                 </div>
-                <p className="text-sm text-muted-foreground mt-0.5">Student · Class of {STUDENT.passOutYear}</p>
-                <p className="text-sm text-muted-foreground">{STUDENT.domain}</p>
-                <p className="text-sm text-foreground mt-2">{STUDENT.bio}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Student · Class of {user.passOutYear}</p>
+                <p className="text-sm text-muted-foreground">{user.domain}</p>
+                {editing ? (
+                  <Textarea
+                    placeholder="Bio"
+                    value={editData.bio}
+                    onChange={(e) => setEditData({ ...editData, bio: e.target.value })}
+                    className="mt-2"
+                    rows={2}
+                  />
+                ) : (
+                  user.bio && <p className="text-sm text-foreground mt-2">{user.bio}</p>
+                )}
               </div>
             </div>
+
+            {editing && (
+              <div className="mt-4 pt-4 border-t">
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <div className="grid gap-4 sm:grid-cols-2 mb-6">
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Email</CardTitle></CardHeader>
-            <CardContent className="pt-0"><p className="text-sm font-medium">{STUDENT.email}</p></CardContent>
+            <CardContent className="pt-0"><p className="text-sm font-medium">{user.collegEmail}</p></CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Registration Number</CardTitle></CardHeader>
-            <CardContent className="pt-0"><p className="text-sm font-medium">{STUDENT.registrationNumber}</p></CardContent>
+            <CardContent className="pt-0"><p className="text-sm font-medium">{user.registrationNumber}</p></CardContent>
           </Card>
         </div>
 
         <Card className="mb-6">
           <CardHeader><CardTitle className="text-sm text-muted-foreground">Skills</CardTitle></CardHeader>
           <CardContent className="pt-0">
-            <div className="flex flex-wrap gap-2">
-              {STUDENT.skills.map(skill => <Badge key={skill} variant="secondary">{skill}</Badge>)}
-            </div>
+            {editing ? (
+              <div className="space-y-2">
+                {editData.skills.map((skill, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      value={skill}
+                      onChange={(e) => handleSkillChange(index, e.target.value)}
+                      placeholder="Skill"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeSkill(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" onClick={addSkill}>
+                  Add Skill
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {user.skills.map(skill => <Badge key={skill} variant="secondary">{skill}</Badge>)}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -86,11 +238,11 @@ export default function StudentProfile() {
           <CardContent className="pt-0">
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-2xl font-bold tabular-nums text-foreground">{STUDENT.reputationScore}</p>
+                <p className="text-2xl font-bold tabular-nums text-foreground">{user.reputationScore}</p>
                 <p className="text-xs text-muted-foreground">Reputation</p>
               </div>
               <div>
-                <p className="text-2xl font-bold tabular-nums text-foreground">{STUDENT.referralCount}</p>
+                <p className="text-2xl font-bold tabular-nums text-foreground">{user.referralCount}</p>
                 <p className="text-xs text-muted-foreground">Referrals</p>
               </div>
               <div>
@@ -109,7 +261,7 @@ export default function StudentProfile() {
           ) : (
             <div className="space-y-4">
               {posts.map(p => (
-                <PostCard key={p.id} post={p} currentUserId={STUDENT.id} onDelete={handleDelete} />
+                <PostCard key={p.id} post={p} currentUserId={user.id} onDelete={() => {}} />
               ))}
             </div>
           )}

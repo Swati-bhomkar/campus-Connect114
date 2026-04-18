@@ -87,6 +87,10 @@ export default function StudentRegister() {
         throw new Error(data.message || "Registration failed");
       }
 
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
+
       setSubmissionSuccess(true);
       setTimeout(() => {
         navigate("/student");
@@ -306,7 +310,7 @@ export default function StudentRegister() {
                       <SelectValue placeholder="Select year" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[2024, 2025, 2026, 2027, 2028].map((y) => (
+                      {[2026, 2027, 2028, 2029, 2030].map((y) => (
                         <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                       ))}
                     </SelectContent>

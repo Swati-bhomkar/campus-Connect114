@@ -160,6 +160,10 @@ export default function AlumniRegister() {
         throw new Error(data.message || "Registration failed");
       }
 
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
+
       setSubmissionSuccess(true);
       setTimeout(() => navigate("/alumni"), 1500);
     } catch (error) {
@@ -336,12 +340,20 @@ export default function AlumniRegister() {
 
                 <div className="space-y-2">
                   <Label>Pass-out Year</Label>
-                  <Input
-                    type="number"
-                    placeholder="2025"
-                    value={passOutYear}
-                    onChange={(e) => setPassOutYear(e.target.value)}
-                  />
+                  <Select value={passOutYear} onValueChange={setPassOutYear}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select pass-out year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2020">2020</SelectItem>
+                      <SelectItem value="2021">2021</SelectItem>
+                      <SelectItem value="2022">2022</SelectItem>
+                      <SelectItem value="2023">2023</SelectItem>
+                      <SelectItem value="2024">2024</SelectItem>
+                      <SelectItem value="2025">2025</SelectItem>
+                      <SelectItem value="2026">2026</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -372,7 +384,7 @@ export default function AlumniRegister() {
             {/* STEP 3: Status Selection */}
             {step === 3 && (
               <div className="space-y-4">
-                <RadioGroup value={accountStatus} onValueChange={(val) => setAccountStatus(val as any)}>
+                <RadioGroup value={accountStatus} onValueChange={(val) => setAccountStatus(val as "working" | "higher_studies" | "freelancer" | "not_working" | "")}>
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2 rounded-lg border p-3 cursor-pointer hover:bg-accent">
                       <RadioGroupItem value="working" id="working" />
