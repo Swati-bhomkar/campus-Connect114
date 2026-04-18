@@ -51,13 +51,19 @@ export default function Login() {
         throw new Error(data.message || "Login failed");
       }
 
-      // Store token in localStorage
+      // Store token and user in localStorage
       localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Login successful - redirect to appropriate dashboard
-      if (showAdminLogin) {
+      if (!data.user?.role) {
+        navigate("/login");
+        return;
+      }
+
+      const userRole = data.user.role;
+      if (userRole === "admin") {
         navigate("/admin");
-      } else if (role === "alumni") {
+      } else if (userRole === "alumni") {
         navigate("/alumni");
       } else {
         navigate("/student");
