@@ -5,6 +5,7 @@ import type { User } from "@/lib/mock-data";
 import { UserPlus, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { renderAvatar } from "@/lib/utils";
 
 interface ProfileCardProps {
   user: User;
@@ -20,9 +21,7 @@ export function ProfileCard({ user, showActions = true, compact = false, classNa
     <Card className={cn("transition-shadow hover:shadow-md", className)}>
       <CardContent className={compact ? "p-4" : "p-5"}>
         <div className="flex items-start gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
-            {user.avatar}
-          </div>
+          {renderAvatar(user.avatar, user.name, "h-11 w-11")}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-foreground truncate">{user.name}</span>

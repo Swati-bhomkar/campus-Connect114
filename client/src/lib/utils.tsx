@@ -21,7 +21,7 @@ const getInitials = (name: string) => {
  * Render avatar component - image or initials
  */
 export const renderAvatar = (avatar: string, name: string, className?: string) => {
-  if (avatar && avatar.startsWith("http")) {
+  if (avatar && (avatar.startsWith("http") || avatar.startsWith("blob:"))) {
     return (
       <img
         src={avatar}
