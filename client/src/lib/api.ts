@@ -132,3 +132,58 @@ export const updateCurrentUser = async (userData: {
 
   return data.user;
 };
+
+/**
+ * Send connection request
+ */
+export const sendConnectionRequest = async (toUserId: string, purpose: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ toUserId, purpose }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to send connection request");
+  }
+
+  return data;
+};
+
+/**
+ * Get notifications for current user
+ */
+export const getNotifications = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/notifications`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get notifications");
+  }
+
+  return data.notifications;
+};
+
+/**
+ * Mark all notifications as read
+ */
+export const markAllNotificationsRead = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/notifications/read-all`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to mark notifications as read");
+  }
+
+  return data;
+};

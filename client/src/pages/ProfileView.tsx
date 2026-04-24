@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PostCard } from "@/components/PostCard";
 import { ReputationBadge, VerificationBadge, AvailabilityIndicator } from "@/components/StatusBadges";
-import { getUserById as getUserByIdAPI, getCurrentUser } from "@/lib/api";
+import { getUserById as getUserByIdAPI, getCurrentUser, sendConnectionRequest } from "@/lib/api";
 import { renderAvatar } from "@/lib/utils";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, UserPlus, Eye } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import type { User } from "@/lib/mock-data";
 
 const NAV = [
@@ -27,6 +28,8 @@ export default function ProfileView() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userLoading, setUserLoading] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
@@ -60,6 +63,26 @@ export default function ProfileView() {
 
     fetchUser();
   }, [id]);
+
+  const handleConnect = async () => {
+    if (!user) return;
+    setIsConnecting(true);
+    try {
+      await sendConnectionRequest(user.id, "career_guidance");
+      toast({
+        title: "Connection request sent",
+        description: "The user will be notified of your request.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to send connection request",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConnecting(false);
+    }
+  };
 
   if (loading || !currentUser) {
     return (
@@ -114,7 +137,14 @@ export default function ProfileView() {
             </div>
 
             <div className="flex gap-2 mt-5 pt-4 border-t">
-              <Button className="flex-1"><UserPlus className="h-4 w-4 mr-1.5" /> Connect</Button>
+              <Button 
+                className="flex-1" 
+                onClick={handleConnect}
+                disabled={isConnecting}
+              >
+                <UserPlus className="h-4 w-4 mr-1.5" /> 
+                {isConnecting ? "Connecting..." : "Connect"}
+              </Button>
               <Button variant="outline" className="flex-1"><Eye className="h-4 w-4 mr-1.5" /> Follow</Button>
             </div>
           </CardContent>

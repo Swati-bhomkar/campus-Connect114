@@ -1,11 +1,13 @@
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { USERS, NOTIFICATIONS } from "@/lib/mock-data";
-import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Bell, Check } from "lucide-react";
+import { getCurrentUser, getNotifications, markAllNotificationsRead } from "@/lib/api";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Bell, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import type { User } from "@/lib/mock-data";
 
-const STUDENT = USERS.find(u => u.id === "u4")!;
 const NAV = [
   { title: "Overview", url: "/student", icon: LayoutDashboard },
   { title: "Discovery", url: "/student/discovery", icon: Search },
@@ -13,7 +15,7 @@ const NAV = [
   { title: "My Referrals", url: "/student/referrals", icon: FileText },
   { title: "Posts", url: "/student/posts", icon: Newspaper },
   { title: "Create Post", url: "/student/create-post", icon: PlusCircle },
-  { title: "My Profile", url: "/student/profile", icon: User },
+{ title: "My Profile", url: "/student/profile", icon: UserIcon },
 ];
 
 const typeConfig: Record<string, { cls: string }> = {
@@ -24,16 +26,71 @@ const typeConfig: Record<string, { cls: string }> = {
 };
 
 export default function Notifications() {
-  const notifications = NOTIFICATIONS.filter(n => n.userId === STUDENT.id);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchUserAndNotifications = async () => {
+      try {
+        const [userData, notificationsData] = await Promise.all([
+          getCurrentUser(),
+          getNotifications()
+        ]);
+        setCurrentUser(userData);
+        setNotifications(notificationsData);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load notifications",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserAndNotifications();
+  }, [toast]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      toast({
+        title: "Success",
+        description: "All notifications marked as read",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to mark notifications as read",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (loading || !currentUser) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Student" userName={STUDENT.name} userRole="Student" userAvatar={STUDENT.avatar}>
+    <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar}>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-bold text-foreground">Notifications</h2>
-          <p className="text-sm text-muted-foreground">{notifications.filter(n => !n.read).length} unread</p>
+          <p className="text-sm text-muted-foreground">{unreadCount} unread</p>
         </div>
-        <Button variant="outline" size="sm"><Check className="h-3.5 w-3.5 mr-1.5" /> Mark all read</Button>
+        <Button variant="outline" size="sm" onClick={handleMarkAllRead}>
+          <Check className="h-3.5 w-3.5 mr-1.5" /> Mark all read
+        </Button>
       </div>
 
       <div className="max-w-2xl space-y-3">

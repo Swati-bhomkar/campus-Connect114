@@ -5,6 +5,8 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
+import connectionRoutes from "./routes/connectionRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -37,6 +39,12 @@ app.use("/api/users", userRoutes);
 
 // Profile routes (me)
 app.use("/api", profileRoutes);
+
+// Connection routes
+app.use("/api/connections", connectionRoutes);
+
+// Notification routes
+app.use("/api/notifications", notificationRoutes);
 
 // 404 handler
 app.use((req, res) => {
