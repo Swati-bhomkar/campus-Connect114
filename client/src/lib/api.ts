@@ -241,3 +241,39 @@ export const markAllNotificationsRead = async () => {
 
   return data;
 };
+
+/**
+ * Accept a connection request
+ */
+export const acceptConnection = async (connectionId: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/${connectionId}/accept`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to accept connection");
+  }
+
+  return data;
+};
+
+/**
+ * Reject a connection request
+ */
+export const rejectConnection = async (connectionId: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/${connectionId}/reject`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to reject connection");
+  }
+
+  return data;
+};

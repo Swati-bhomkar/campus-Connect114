@@ -70,6 +70,7 @@ router.post("/", authenticateToken, async (req, res) => {
       title: "New Connection Request",
       message: `${fromUser.name} wants to connect with you`,
       linkTo: `/profile/${fromUserId}`,
+      connectionId: connection._id,
     });
 
     await notification.save();
@@ -161,6 +162,120 @@ router.delete("/:userId", authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error("Cancel connection error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+// PUT /api/connections/:id/accept
+router.put("/:id/accept", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user._id;
+
+    // Find connection
+    const connection = await Connection.findById(id);
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "Connection not found",
+      });
+    }
+
+    // Check if current user is the recipient
+    if (connection.toUserId.toString() !== currentUserId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only accept connections sent to you",
+      });
+    }
+
+    // Check if status is pending
+    if (connection.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Connection is not pending",
+      });
+    }
+
+    // Update connection status
+    connection.status = "accepted";
+    await connection.save();
+
+    // Create notification for sender
+    const recipientUser = await User.findById(currentUserId);
+    const acceptedNotification = new Notification({
+      userId: connection.fromUserId,
+      type: "connection_accepted",
+      title: "Connection Accepted",
+      message: `${recipientUser.name} accepted your connection request`,
+      linkTo: `/profile/${currentUserId}`,
+    });
+
+    await acceptedNotification.save();
+
+    res.json({
+      success: true,
+      message: "Connection accepted",
+      connection,
+    });
+
+  } catch (error) {
+    console.error("Accept connection error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+// PUT /api/connections/:id/reject
+router.put("/:id/reject", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user._id;
+
+    // Find connection
+    const connection = await Connection.findById(id);
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "Connection not found",
+      });
+    }
+
+    // Check if current user is the recipient
+    if (connection.toUserId.toString() !== currentUserId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only reject connections sent to you",
+      });
+    }
+
+    // Check if status is pending
+    if (connection.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Connection is not pending",
+      });
+    }
+
+    // Update connection status
+    connection.status = "rejected";
+    await connection.save();
+
+    // No notification for rejection
+
+    res.json({
+      success: true,
+      message: "Connection rejected",
+      connection,
+    });
+
+  } catch (error) {
+    console.error("Reject connection error:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",

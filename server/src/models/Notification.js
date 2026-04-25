@@ -8,7 +8,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["connection_request", "referral_update", "admin_notice", "post_relevant"],
+    enum: ["connection_request", "connection_accepted", "referral_update", "admin_notice", "post_relevant"],
     required: true,
   },
   title: {
@@ -25,6 +25,11 @@ const notificationSchema = new mongoose.Schema({
   },
   linkTo: {
     type: String,
+    default: null,
+  },
+  connectionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Connection",
     default: null,
   },
   createdAt: {
