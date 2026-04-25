@@ -90,6 +90,86 @@ router.post("/", authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/connections
+router.get("/", authenticateToken, async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+
+    const connections = await Connection.find({
+      $or: [
+        { fromUserId: currentUserId },
+        { toUserId: currentUserId }
+      ],
+      status: "accepted",
+    })
+      .populate("fromUserId", "name role avatar company domain passOutYear reputationScore")
+      .populate("toUserId", "name role avatar company domain passOutYear reputationScore")
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const response = connections.map(connection => {
+      const fromUser = connection.fromUserId;
+      const toUser = connection.toUserId;
+      const currentUserIdString = currentUserId.toString();
+      const connectedUser = fromUser._id.toString() === currentUserIdString ? toUser : fromUser;
+
+      return {
+        connectionId: connection._id.toString(),
+        connectedUser: {
+          id: connectedUser._id.toString(),
+          name: connectedUser.name,
+          role: connectedUser.role,
+          avatar: connectedUser.avatar,
+          company: connectedUser.company,
+          domain: connectedUser.domain,
+          passOutYear: connectedUser.passOutYear,
+          reputationScore: connectedUser.reputationScore,
+        },
+        status: connection.status,
+        purpose: connection.purpose,
+        connectedAt: connection.updatedAt || connection.createdAt,
+      };
+    });
+
+    res.json({
+      success: true,
+      connections: response,
+    });
+  } catch (error) {
+    console.error("Get connections error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+// GET /api/connections/count
+router.get("/count", authenticateToken, async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+
+    const count = await Connection.countDocuments({
+      $or: [
+        { fromUserId: currentUserId },
+        { toUserId: currentUserId }
+      ],
+      status: "accepted",
+    });
+
+    res.json({
+      success: true,
+      count,
+    });
+  } catch (error) {
+    console.error("Get connections count error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
 // GET /api/connections/status/:userId
 router.get("/status/:userId", authenticateToken, async (req, res) => {
   try {

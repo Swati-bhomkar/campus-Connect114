@@ -153,6 +153,42 @@ export const sendConnectionRequest = async (toUserId: string, purpose: string) =
 };
 
 /**
+ * Get accepted connections for current user
+ */
+export const getConnections = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/connections`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get connections");
+  }
+
+  return data.connections;
+};
+
+/**
+ * Get connection count for current user
+ */
+export const getConnectionCount = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/count`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get connection count");
+  }
+
+  return data.count;
+};
+
+/**
  * Get connection status with another user
  */
 export const getConnectionStatus = async (userId: string) => {

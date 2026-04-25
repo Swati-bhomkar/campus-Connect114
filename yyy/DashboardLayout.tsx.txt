@@ -1,4 +1,4 @@
-DashboardLayout.tsx
+DashboardLayout.tsx---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 import { ReactNode, useState, useEffect } from "react";
 import {
@@ -162,7 +162,7 @@ export function DashboardLayout({ children, navItems, groupLabel, userName, user
   );
 }
 
-ProfileCard.tsx
+ProfileCard.tsx--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -298,7 +298,9 @@ export function ProfileCard({ user, showActions = true, compact = false, classNa
   );
 }
 
-api.ts
+api.ts---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
 // API Base URL configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -454,6 +456,42 @@ export const sendConnectionRequest = async (toUserId: string, purpose: string) =
 };
 
 /**
+ * Get accepted connections for current user
+ */
+export const getConnections = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/connections`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get connections");
+  }
+
+  return data.connections;
+};
+
+/**
+ * Get connection count for current user
+ */
+export const getConnectionCount = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/count`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get connection count");
+  }
+
+  return data.count;
+};
+
+/**
  * Get connection status with another user
  */
 export const getConnectionStatus = async (userId: string) => {
@@ -543,7 +581,43 @@ export const markAllNotificationsRead = async () => {
   return data;
 };
 
-StudentDiscovery.tsx
+/**
+ * Accept a connection request
+ */
+export const acceptConnection = async (connectionId: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/${connectionId}/accept`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to accept connection");
+  }
+
+  return data;
+};
+
+/**
+ * Reject a connection request
+ */
+export const rejectConnection = async (connectionId: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/${connectionId}/reject`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to reject connection");
+  }
+
+  return data;
+};
+
+StudentDiscovery.tsx-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
@@ -772,7 +846,7 @@ export default function StudentDiscovery() {
   );
 }
 
-Notifications.tsx
+Notifications.tsx------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -873,7 +947,7 @@ export default function Notifications() {
   );
 }
 
-ProfileView.tsx
+ProfileView.tsx--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -1088,8 +1162,7 @@ export default function ProfileView() {
   );
 }
  
-in connection router
-
+in connection router-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 import express from "express";
 import { authenticateToken } from "../middleware/auth.js";
@@ -1163,6 +1236,7 @@ router.post("/", authenticateToken, async (req, res) => {
       title: "New Connection Request",
       message: `${fromUser.name} wants to connect with you`,
       linkTo: `/profile/${fromUserId}`,
+      connectionId: connection._id,
     });
 
     await notification.save();
@@ -1175,6 +1249,86 @@ router.post("/", authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error("Create connection error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+// GET /api/connections
+router.get("/", authenticateToken, async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+
+    const connections = await Connection.find({
+      $or: [
+        { fromUserId: currentUserId },
+        { toUserId: currentUserId }
+      ],
+      status: "accepted",
+    })
+      .populate("fromUserId", "name role avatar company domain passOutYear reputationScore")
+      .populate("toUserId", "name role avatar company domain passOutYear reputationScore")
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const response = connections.map(connection => {
+      const fromUser = connection.fromUserId;
+      const toUser = connection.toUserId;
+      const currentUserIdString = currentUserId.toString();
+      const connectedUser = fromUser._id.toString() === currentUserIdString ? toUser : fromUser;
+
+      return {
+        connectionId: connection._id.toString(),
+        connectedUser: {
+          id: connectedUser._id.toString(),
+          name: connectedUser.name,
+          role: connectedUser.role,
+          avatar: connectedUser.avatar,
+          company: connectedUser.company,
+          domain: connectedUser.domain,
+          passOutYear: connectedUser.passOutYear,
+          reputationScore: connectedUser.reputationScore,
+        },
+        status: connection.status,
+        purpose: connection.purpose,
+        connectedAt: connection.updatedAt || connection.createdAt,
+      };
+    });
+
+    res.json({
+      success: true,
+      connections: response,
+    });
+  } catch (error) {
+    console.error("Get connections error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+// GET /api/connections/count
+router.get("/count", authenticateToken, async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+
+    const count = await Connection.countDocuments({
+      $or: [
+        { fromUserId: currentUserId },
+        { toUserId: currentUserId }
+      ],
+      status: "accepted",
+    });
+
+    res.json({
+      success: true,
+      count,
+    });
+  } catch (error) {
+    console.error("Get connections count error:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -1261,9 +1415,123 @@ router.delete("/:userId", authenticateToken, async (req, res) => {
   }
 });
 
+// PUT /api/connections/:id/accept
+router.put("/:id/accept", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user._id;
+
+    // Find connection
+    const connection = await Connection.findById(id);
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "Connection not found",
+      });
+    }
+
+    // Check if current user is the recipient
+    if (connection.toUserId.toString() !== currentUserId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only accept connections sent to you",
+      });
+    }
+
+    // Check if status is pending
+    if (connection.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Connection is not pending",
+      });
+    }
+
+    // Update connection status
+    connection.status = "accepted";
+    await connection.save();
+
+    // Create notification for sender
+    const recipientUser = await User.findById(currentUserId);
+    const acceptedNotification = new Notification({
+      userId: connection.fromUserId,
+      type: "connection_accepted",
+      title: "Connection Accepted",
+      message: `${recipientUser.name} accepted your connection request`,
+      linkTo: `/profile/${currentUserId}`,
+    });
+
+    await acceptedNotification.save();
+
+    res.json({
+      success: true,
+      message: "Connection accepted",
+      connection,
+    });
+
+  } catch (error) {
+    console.error("Accept connection error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+// PUT /api/connections/:id/reject
+router.put("/:id/reject", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user._id;
+
+    // Find connection
+    const connection = await Connection.findById(id);
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "Connection not found",
+      });
+    }
+
+    // Check if current user is the recipient
+    if (connection.toUserId.toString() !== currentUserId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only reject connections sent to you",
+      });
+    }
+
+    // Check if status is pending
+    if (connection.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Connection is not pending",
+      });
+    }
+
+    // Update connection status
+    connection.status = "rejected";
+    await connection.save();
+
+    // No notification for rejection
+
+    res.json({
+      success: true,
+      message: "Connection rejected",
+      connection,
+    });
+
+  } catch (error) {
+    console.error("Reject connection error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
 export default router;
 
-In notification router backend
+In notification router backend---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 import express from "express";
@@ -1335,3 +1603,452 @@ router.get("/unread-count", authenticateToken, async (req, res) => {
 });
 
 export default router;
+
+studentconnection.tsx-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+import { useEffect, useState } from "react";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { getConnections, getCurrentUser } from "@/lib/api";
+import { renderAvatar } from "@/lib/utils";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Check, X, Clock, Settings } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { type User } from "@/lib/mock-data";
+
+const STUDENT_NAV = [
+  { title: "Overview", url: "/student", icon: LayoutDashboard },
+  { title: "Discovery", url: "/student/discovery", icon: Search },
+  { title: "Connections", url: "/student/connections", icon: Users },
+  { title: "My Referrals", url: "/student/referrals", icon: FileText },
+  { title: "Posts", url: "/student/posts", icon: Newspaper },
+  { title: "Create Post", url: "/student/create-post", icon: PlusCircle },
+  { title: "My Profile", url: "/student/profile", icon: UserIcon },
+];
+
+const ALUMNI_NAV = [
+  { title: "Overview", url: "/alumni", icon: LayoutDashboard },
+  { title: "Discovery", url: "/alumni/discovery", icon: Search },
+  { title: "Incoming Requests", url: "/alumni/requests", icon: FileText },
+  { title: "Connections", url: "/alumni/connections", icon: Users },
+  { title: "My Posts", url: "/alumni/posts", icon: Newspaper },
+  { title: "Create Post", url: "/alumni/create-post", icon: PlusCircle },
+  { title: "Referral Settings", url: "/alumni/settings", icon: Settings },
+  { title: "My Profile", url: "/alumni/profile", icon:UserIcon },
+];
+
+interface ConnectedUser {
+  id: string;
+  name: string;
+  role: string;
+  avatar?: string;
+  company?: string;
+  domain?: string;
+  passOutYear?: number;
+  reputationScore?: number;
+}
+
+interface ConnectionItem {
+  connectionId: string;
+  connectedUser: ConnectedUser;
+  status: "pending" | "accepted" | "rejected";
+  purpose: "resume_review" | "career_guidance" | "referral";
+  connectedAt: string;
+}
+
+const statusBadge: Record<string, { cls: string; icon: typeof Check }> = {
+  accepted: { cls: "text-emerald-700 bg-emerald-50 border-emerald-200", icon: Check },
+  pending: { cls: "text-amber-700 bg-amber-50 border-amber-200", icon: Clock },
+  rejected: { cls: "text-red-700 bg-red-50 border-red-200", icon: X },
+};
+
+const purposeLabel: Record<string, string> = {
+  resume_review: "Resume Review",
+  career_guidance: "Career Guidance",
+  referral: "Referral",
+};
+
+export default function StudentConnections() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [connections, setConnections] = useState<ConnectionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [user, connectionData] = await Promise.all([getCurrentUser(), getConnections()]);
+        setCurrentUser(user);
+        setConnections(connectionData);
+      } catch (error) {
+        console.error("Failed to load connections:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const isAlumni = currentUser?.role === "alumni";
+  const NAV = isAlumni ? ALUMNI_NAV : STUDENT_NAV;
+  const roleLabel = isAlumni ? "Alumni" : "Student";
+
+  if (loading || !currentUser) {
+    return (
+      <DashboardLayout navItems={NAV} groupLabel={roleLabel} userName={currentUser?.name || "Loading"} userRole={roleLabel} userAvatar={currentUser?.avatar || ""} currentUser={currentUser || undefined}>
+        <div className="rounded-lg border bg-card p-8 text-center">
+          <p className="text-sm text-muted-foreground">Loading connections...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout navItems={NAV} groupLabel={roleLabel} userName={currentUser.name} userRole={roleLabel} userAvatar={currentUser.avatar} currentUser={currentUser}>
+      <h2 className="text-xl font-bold text-foreground mb-1">My Connections</h2>
+      <p className="text-sm text-muted-foreground mb-6">{connections.length} professional connections</p>
+
+      <div className="space-y-3">
+        {connections.map(conn => {
+          const other = conn.connectedUser;
+          const st = statusBadge[conn.status];
+          const StIcon = st.icon;
+
+          return (
+            <div key={conn.connectionId} className="flex items-center gap-4 rounded-lg border bg-card p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                {renderAvatar(other.avatar, other.name, "h-10 w-10 text-sm")}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-foreground truncate">{other.name}</p>
+                <p className="text-sm text-muted-foreground">{other.company ? `${other.company} · ` : ""}{other.domain}</p>
+              </div>
+              <Badge variant="outline" className={cn("shrink-0 gap-1 text-xs", purposeLabel[conn.purpose] && "")}>
+                {purposeLabel[conn.purpose]}
+              </Badge>
+              <Badge variant="outline" className={cn("shrink-0 gap-1 text-xs", st.cls)}>
+                <StIcon className="h-3 w-3" />
+                {conn.status.charAt(0).toUpperCase() + conn.status.slice(1)}
+              </Badge>
+            </div>
+          );
+        })}
+
+        {connections.length === 0 && (
+          <div className="rounded-lg border bg-card p-8 text-center">
+            <p className="text-sm text-muted-foreground">No connections yet</p>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  );
+}
+
+
+studentprofile.tsx----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+import { useState, useEffect } from "react";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { PostCard } from "@/components/PostCard";
+import { ReputationBadge } from "@/components/StatusBadges";
+import { POSTS, type Post, type User } from "@/lib/mock-data";
+import { getCurrentUser, updateCurrentUser, getConnectionCount } from "@/lib/api";
+import { renderAvatar } from "@/lib/utils";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Pencil, Save, X } from "lucide-react";
+import { toast } from "sonner";
+
+const NAV = [
+  { title: "Overview", url: "/student", icon: LayoutDashboard },
+  { title: "Discovery", url: "/student/discovery", icon: Search },
+  { title: "Connections", url: "/student/connections", icon: Users },
+  { title: "My Referrals", url: "/student/referrals", icon: FileText },
+  { title: "Posts", url: "/student/posts", icon: Newspaper },
+  { title: "Create Post", url: "/student/create-post", icon: PlusCircle },
+  { title: "My Profile", url: "/student/profile", icon: UserIcon },
+];
+
+export default function StudentProfile() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [connectionCount, setConnectionCount] = useState(0);
+  const [editing, setEditing] = useState(false);
+  const [editData, setEditData] = useState({
+    name: "",
+    bio: "",
+    skills: [] as string[],
+    avatar: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const posts = POSTS.filter(p => p.authorId === user?.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await getCurrentUser();
+        setUser(userData);
+        setEditData({
+          name: userData.name,
+          bio: userData.bio || "",
+          skills: userData.skills || [],
+          avatar: userData.avatar || "",
+        });
+
+        // Fetch connection count
+        const count = await getConnectionCount();
+        setConnectionCount(count);
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+        toast.error("Failed to load profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  const handleSave = async () => {
+    if (!user) return;
+
+    setSaving(true);
+    try {
+      const updatedUser = await updateCurrentUser(editData);
+      setUser(updatedUser);
+      setEditing(false);
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+      toast.error("Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (user) {
+      setEditData({
+        name: user.name,
+        bio: user.bio || "",
+        skills: user.skills || [],
+        avatar: user.avatar || "",
+      });
+    }
+    setEditing(false);
+  };
+
+  const handleSkillChange = (index: number, value: string) => {
+    const newSkills = [...editData.skills];
+    newSkills[index] = value;
+    setEditData({ ...editData, skills: newSkills });
+  };
+
+  const addSkill = () => {
+    setEditData({ ...editData, skills: [...editData.skills, ""] });
+  };
+
+  const removeSkill = (index: number) => {
+    const newSkills = editData.skills.filter((_, i) => i !== index);
+    setEditData({ ...editData, skills: newSkills });
+  };
+
+  if (loading || !user) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  return (
+    <DashboardLayout navItems={NAV} groupLabel="Student" userName={user.name} userRole="Student" userAvatar={user.avatar} currentUser={user}>
+      <div className="max-w-2xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-foreground">My Profile</h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => editing ? handleCancel() : setEditing(true)}
+            disabled={saving}
+          >
+            {editing ? (
+              <>
+                <X className="h-3.5 w-3.5 mr-1.5" /> Cancel
+              </>
+            ) : (
+              <>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+              </>
+            )}
+          </Button>
+        </div>
+
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-5">
+              {editing ? (
+                <div className="flex flex-col gap-2">
+                  {renderAvatar(editData.avatar, editData.name)}
+                  <Input
+                    placeholder="Avatar URL"
+                    value={editData.avatar}
+                    onChange={(e) => setEditData({ ...editData, avatar: e.target.value })}
+                    className="w-32 text-xs"
+                  />
+                </div>
+              ) : (
+                renderAvatar(user.avatar, user.name)
+              )}
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {editing ? (
+                    <Input
+                      value={editData.name}
+                      onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                      className="text-lg font-bold"
+                    />
+                  ) : (
+                    <h3 className="text-lg font-bold text-foreground">{user.name}</h3>
+                  )}
+                  <ReputationBadge score={user.reputationScore} />
+                </div>
+                <p className="text-sm text-muted-foreground mt-0.5">Student · Class of {user.passOutYear}</p>
+                <p className="text-sm text-muted-foreground">{user.domain}</p>
+                {editing ? (
+                  <Textarea
+                    placeholder="Bio"
+                    value={editData.bio}
+                    onChange={(e) => setEditData({ ...editData, bio: e.target.value })}
+                    className="mt-2"
+                    rows={2}
+                  />
+                ) : (
+                  user.bio && <p className="text-sm text-foreground mt-2">{user.bio}</p>
+                )}
+              </div>
+            </div>
+
+            {editing && (
+              <div className="mt-4 pt-4 border-t">
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="grid gap-4 sm:grid-cols-2 mb-6">
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Email</CardTitle></CardHeader>
+            <CardContent className="pt-0"><p className="text-sm font-medium">{user.email}</p></CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Registration Number</CardTitle></CardHeader>
+            <CardContent className="pt-0"><p className="text-sm font-medium">{user.registrationNumber}</p></CardContent>
+          </Card>
+        </div>
+
+        <Card className="mb-6">
+          <CardHeader><CardTitle className="text-sm text-muted-foreground">Skills</CardTitle></CardHeader>
+          <CardContent className="pt-0">
+            {editing ? (
+              <div className="space-y-2">
+                {editData.skills.map((skill, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      value={skill}
+                      onChange={(e) => handleSkillChange(index, e.target.value)}
+                      placeholder="Skill"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeSkill(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" onClick={addSkill}>
+                  Add Skill
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {user.skills.map(skill => <Badge key={skill} variant="secondary">{skill}</Badge>)}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader><CardTitle className="text-sm text-muted-foreground">Stats</CardTitle></CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-2xl font-bold tabular-nums text-foreground">{user.reputationScore}</p>
+                <p className="text-xs text-muted-foreground">Reputation</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold tabular-nums text-foreground">{user.referralCount}</p>
+                <p className="text-xs text-muted-foreground">Referrals</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold tabular-nums text-foreground">{connectionCount}</p>
+                <p className="text-xs text-muted-foreground">Connections</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* User's Posts */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4">My Posts</h3>
+          {posts.length === 0 ? (
+            <Card><CardContent className="p-6 text-center text-muted-foreground">You haven't created any posts yet.</CardContent></Card>
+          ) : (
+            <div className="space-y-4">
+              {posts.map(p => (
+                <PostCard key={p.id} post={p} currentUserId={user.id} onDelete={() => {}} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
+
+connection model--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+import mongoose from "mongoose";
+
+const connectionSchema = new mongoose.Schema({
+  fromUserId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  toUserId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  status: {
+    type: String,
+    enum: ["pending", "accepted", "rejected"],
+    default: "pending",
+  },
+  purpose: {
+    type: String,
+    enum: ["resume_review", "career_guidance", "referral"],
+    required: true,
+  },
+}, { timestamps: true });
+
+// Prevent duplicate pending/accepted connections between same users
+connectionSchema.index({ fromUserId: 1, toUserId: 1 }, { unique: true });
+
+export default mongoose.model("Connection", connectionSchema);

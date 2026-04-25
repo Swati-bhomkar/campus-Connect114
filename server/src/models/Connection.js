@@ -21,11 +21,7 @@ const connectionSchema = new mongoose.Schema({
     enum: ["resume_review", "career_guidance", "referral"],
     required: true,
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+}, { timestamps: true });
 
 // Prevent duplicate pending/accepted connections between same users
 connectionSchema.index({ fromUserId: 1, toUserId: 1 }, { unique: true });

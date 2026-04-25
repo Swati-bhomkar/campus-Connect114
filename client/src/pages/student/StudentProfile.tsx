@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PostCard } from "@/components/PostCard";
 import { ReputationBadge } from "@/components/StatusBadges";
 import { POSTS, type Post, type User } from "@/lib/mock-data";
-import { getCurrentUser, updateCurrentUser } from "@/lib/api";
+import { getCurrentUser, updateCurrentUser, getConnectionCount } from "@/lib/api";
 import { renderAvatar } from "@/lib/utils";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
@@ -26,6 +26,7 @@ const NAV = [
 export default function StudentProfile() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [connectionCount, setConnectionCount] = useState(0);
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState({
     name: "",
@@ -48,6 +49,10 @@ export default function StudentProfile() {
           skills: userData.skills || [],
           avatar: userData.avatar || "",
         });
+
+        // Fetch connection count
+        const count = await getConnectionCount();
+        setConnectionCount(count);
       } catch (error) {
         console.error("Failed to fetch user:", error);
         toast.error("Failed to load profile");
@@ -246,7 +251,7 @@ export default function StudentProfile() {
                 <p className="text-xs text-muted-foreground">Referrals</p>
               </div>
               <div>
-                <p className="text-2xl font-bold tabular-nums text-foreground">3</p>
+                <p className="text-2xl font-bold tabular-nums text-foreground">{connectionCount}</p>
                 <p className="text-xs text-muted-foreground">Connections</p>
               </div>
             </div>
