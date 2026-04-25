@@ -1,0 +1,1337 @@
+DashboardLayout.tsx
+
+import { ReactNode, useState, useEffect } from "react";
+import {
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import { NavLink } from "@/components/NavLink";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Bell, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { CareerChatbot } from "@/components/CareerChatbot";
+import { getUnreadNotificationCount } from "@/lib/api";
+import type { User } from "@/lib/mock-data";
+
+interface NavItem {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+}
+
+interface DashboardLayoutProps {
+  children: ReactNode;
+  navItems: NavItem[];
+  groupLabel: string;
+  userName: string;
+  userRole: string;
+  userAvatar: string;
+  currentUser?: User;
+}
+
+function SidebarNav({ navItems, groupLabel, userName, userRole, userAvatar }: Omit<DashboardLayoutProps, "children">) {
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  return (
+    <Sidebar collapsible="icon" className="border-r-0">
+      <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4">
+        {!collapsed && (
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground text-xs font-bold">
+              CC
+            </div>
+            <span className="font-semibold text-sidebar-foreground text-sm">CampusConnect</span>
+          </div>
+        )}
+        {collapsed && (
+          <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground text-xs font-bold">
+            CC
+          </div>
+        )}
+      </div>
+
+      <SidebarContent className="pt-2">
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-sidebar-foreground/50 text-[10px] uppercase tracking-widest">
+            {groupLabel}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      end
+                      className="hover:bg-sidebar-accent/60"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                    >
+                      <item.icon className="mr-2 h-4 w-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <div className="mt-auto border-t border-sidebar-border p-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-xs font-semibold">
+            {userAvatar}
+          </div>
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-sidebar-foreground">{userName}</p>
+              <p className="truncate text-xs text-sidebar-foreground/50 capitalize">{userRole}</p>
+            </div>
+          )}
+          {!collapsed && (
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => navigate("/login")}>
+              <LogOut className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </Sidebar>
+  );
+}
+
+export function DashboardLayout({ children, navItems, groupLabel, userName, userRole, userAvatar, currentUser }: DashboardLayoutProps) {
+  const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const data = await getUnreadNotificationCount();
+        setUnreadCount(data.unreadCount);
+      } catch (error) {
+        console.error("Failed to fetch unread count:", error);
+      }
+    };
+
+    fetchUnreadCount();
+  }, [refreshTrigger]);
+
+  const handleNotificationsClick = () => {
+    navigate("/notifications");
+    // Trigger refresh when navigating to notifications
+    setTimeout(() => setRefreshTrigger(prev => prev + 1), 100);
+  };
+
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <SidebarNav navItems={navItems} groupLabel={groupLabel} userName={userName} userRole={userRole} userAvatar={userAvatar} />
+        <div className="flex flex-1 flex-col">
+          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 backdrop-blur px-4">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger />
+              <h1 className="text-sm font-semibold text-foreground hidden sm:block">CampusConnect Pro</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="relative" onClick={handleNotificationsClick}>
+                <Bell className="h-4 w-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </Button>
+            </div>
+          </header>
+          <main className="flex-1 p-4 sm:p-6 overflow-auto">
+            {children}
+          </main>
+        </div>
+        {currentUser && currentUser.role !== "admin" && (
+          <CareerChatbot user={currentUser} />
+        )}
+      </div>
+    </SidebarProvider>
+  );
+}
+
+ProfileCard.tsx
+
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ReputationBadge, VerificationBadge, AvailabilityIndicator } from "@/components/StatusBadges";
+import type { User } from "@/lib/mock-data";
+import { UserPlus, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { renderAvatar } from "@/lib/utils";
+import { useState, useEffect } from "react";
+import { getConnectionStatus, sendConnectionRequest, cancelConnectionRequest } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+
+interface ProfileCardProps {
+  user: User;
+  showActions?: boolean;
+  compact?: boolean;
+  className?: string;
+  onConnectionUpdate?: () => void;
+}
+
+export function ProfileCard({ user, showActions = true, compact = false, className, onConnectionUpdate }: ProfileCardProps) {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [connectionStatus, setConnectionStatus] = useState<"none" | "pending" | "accepted">("none");
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const data = await getConnectionStatus(user.id);
+        setConnectionStatus(data.status);
+      } catch (error) {
+        console.error("Failed to fetch connection status:", error);
+      }
+    };
+
+    fetchStatus();
+  }, [user.id]);
+
+  const handleConnect = async () => {
+    if (isConnecting) return;
+
+    setIsConnecting(true);
+    try {
+      if (connectionStatus === "none") {
+        // Send connection request
+        await sendConnectionRequest(user.id, "career_guidance");
+        setConnectionStatus("pending");
+        toast({
+          title: "Connection request sent",
+          description: "The user will be notified of your request.",
+        });
+      } else if (connectionStatus === "pending") {
+        // Cancel connection request
+        await cancelConnectionRequest(user.id);
+        setConnectionStatus("none");
+        toast({
+          title: "Connection request cancelled",
+          description: "The request has been cancelled.",
+        });
+      }
+      onConnectionUpdate?.();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to process connection request",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const getButtonText = () => {
+    if (isConnecting) return connectionStatus === "pending" ? "Cancelling..." : "Connecting...";
+    switch (connectionStatus) {
+      case "pending": return "Requested";
+      case "accepted": return "Connected";
+      default: return "Connect";
+    }
+  };
+
+  const isButtonDisabled = () => {
+    return connectionStatus === "accepted" || isConnecting;
+  };
+
+  return (
+    <Card className={cn("transition-shadow hover:shadow-md", className)}>
+      <CardContent className={compact ? "p-4" : "p-5"}>
+        <div className="flex items-start gap-4">
+          {renderAvatar(user.avatar, user.name, "h-11 w-11")}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-foreground truncate">{user.name}</span>
+              {user.role === "alumni" && <VerificationBadge status={user.companyVerified} />}
+              <ReputationBadge score={user.reputationScore} />
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {user.role === "alumni" ? `${user.company} · Class of ${user.passOutYear}` : `Student · Class of ${user.passOutYear}`}
+            </p>
+            <p className="text-sm text-muted-foreground">{user.domain}</p>
+            {!compact && (
+              <>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {user.skills.slice(0, 4).map(skill => (
+                    <span key={skill} className="rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+                {user.role === "alumni" && (
+                  <div className="mt-2">
+                    <AvailabilityIndicator available={user.availableForReferrals} />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+        {showActions && (
+          <div className="flex gap-2 mt-4 pt-3 border-t">
+            <Button size="sm" variant="outline" className="flex-1" onClick={() => navigate(`/profile/${user.id}`)}>
+              <Eye className="h-3.5 w-3.5 mr-1.5" /> View
+            </Button>
+            <Button size="sm" className="flex-1" onClick={handleConnect} disabled={isButtonDisabled()}>
+              <UserPlus className="h-3.5 w-3.5 mr-1.5" /> {getButtonText()}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+api.ts
+// API Base URL configuration
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+/**
+ * Get authorization headers with JWT token
+ */
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("token");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+
+/**
+ * Get current user profile
+ */
+export const getCurrentUser = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/me`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get user data");
+  }
+
+  // Normalize API response: map collegEmail to email
+  const user = {
+    ...data.user,
+    email: data.user.collegEmail,
+  };
+
+  return user;
+};
+
+/**
+ * Get all users for admin
+ */
+export const getAllUsers = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/users`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to fetch users");
+  }
+
+  return data.users.map((user: any) => ({
+    ...user,
+    id: user._id,
+  }));
+};
+
+/**
+ * Search users with filters
+ */
+export const searchUsers = async (filters: {
+  search?: string;
+  role?: string;
+  domain?: string;
+  company?: string;
+  passOutYear?: string;
+  availableOnly?: boolean;
+}) => {
+  const params = new URLSearchParams();
+  
+  if (filters.search) params.append("search", filters.search);
+  if (filters.role && filters.role !== "all") params.append("role", filters.role);
+  if (filters.domain && filters.domain !== "all") params.append("domain", filters.domain);
+  if (filters.company && filters.company !== "all") params.append("company", filters.company);
+  if (filters.passOutYear && filters.passOutYear !== "all") params.append("passOutYear", filters.passOutYear);
+  if (filters.availableOnly) params.append("availableOnly", "true");
+
+  const response = await fetch(`${API_BASE_URL}/api/users/search?${params}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to search users");
+  }
+
+  return data.users;
+};
+
+/**
+ * Get user by ID
+ */
+export const getUserById = async (id: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get user");
+  }
+
+  return data.user;
+};
+
+/**
+ * Update current user profile
+ */
+export const updateCurrentUser = async (userData: {
+  name?: string;
+  bio?: string;
+  skills?: string[];
+  avatar?: string;
+}) => {
+  const response = await fetch(`${API_BASE_URL}/api/me`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(userData),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to update profile");
+  }
+
+  return data.user;
+};
+
+/**
+ * Send connection request
+ */
+export const sendConnectionRequest = async (toUserId: string, purpose: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ toUserId, purpose }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to send connection request");
+  }
+
+  return data;
+};
+
+/**
+ * Get connection status with another user
+ */
+export const getConnectionStatus = async (userId: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/status/${userId}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get connection status");
+  }
+
+  return data;
+};
+
+/**
+ * Get unread notification count
+ */
+export const getUnreadNotificationCount = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/notifications/unread-count`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get unread count");
+  }
+
+  return data;
+};
+
+/**
+ * Cancel connection request
+ */
+export const cancelConnectionRequest = async (userId: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/${userId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to cancel connection request");
+  }
+
+  return data;
+};
+
+/**
+ * Get notifications for current user
+ */
+export const getNotifications = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/notifications`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get notifications");
+  }
+
+  return data.notifications;
+};
+
+/**
+ * Mark all notifications as read
+ */
+export const markAllNotificationsRead = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/notifications/read-all`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to mark notifications as read");
+  }
+
+  return data;
+};
+
+StudentDiscovery.tsx
+
+import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "react-router-dom";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { ProfileCard } from "@/components/ProfileCard";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { searchUsers, getCurrentUser } from "@/lib/api";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Settings } from "lucide-react";
+import type { User } from "@/lib/mock-data";
+
+const STUDENT_NAV = [
+  { title: "Overview", url: "/student", icon: LayoutDashboard },
+  { title: "Discovery", url: "/student/discovery", icon: Search },
+  { title: "Connections", url: "/student/connections", icon: Users },
+  { title: "My Referrals", url: "/student/referrals", icon: FileText },
+  { title: "Posts", url: "/student/posts", icon: Newspaper },
+  { title: "Create Post", url: "/student/create-post", icon: PlusCircle },
+  { title: "My Profile", url: "/student/profile", icon: UserIcon },
+];
+
+const ALUMNI_NAV = [
+  { title: "Overview", url: "/alumni", icon: LayoutDashboard },
+  { title: "Discovery", url: "/alumni/discovery", icon: Search },
+  { title: "Incoming Requests", url: "/alumni/requests", icon: FileText },
+  { title: "Connections", url: "/alumni/connections", icon: Users },
+  { title: "My Posts", url: "/alumni/posts", icon: Newspaper },
+  { title: "Create Post", url: "/alumni/create-post", icon: PlusCircle },
+  { title: "Referral Settings", url: "/alumni/settings", icon: Settings },
+  { title: "My Profile", url: "/alumni/profile", icon: UserIcon },
+];
+
+export default function StudentDiscovery() {
+  const location = useLocation();
+  const isAlumni = location.pathname.startsWith("/alumni");
+  const NAV = isAlumni ? ALUMNI_NAV : STUDENT_NAV;
+  const roleLabel = isAlumni ? "Alumni" : "Student";
+
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [domains, setDomains] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [years, setYears] = useState([]);
+
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [domain, setDomain] = useState("all");
+  const [company, setCompany] = useState("all");
+  const [year, setYear] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [onlyAvailable, setOnlyAvailable] = useState(false);
+
+  // Fetch current user
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const user = await getCurrentUser();
+        setCurrentUser(user);
+      } catch (err) {
+        console.error("Failed to fetch current user:", err);
+        // Set a placeholder user
+        setCurrentUser({
+          id: "placeholder",
+          name: "User",
+          email: "user@example.com",
+          registrationNumber: "000000",
+          role: "student",
+          domain: "",
+          skills: [],
+          currentStatus: "studying",
+          passOutYear: 2025,
+          reputationScore: 0,
+          referralCount: 0,
+          availableForReferrals: false,
+          avatar: "",
+          joinedAt: "",
+          companyVerified: "unverified",
+        });
+      }
+    };
+    fetchCurrentUser();
+  }, []);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const [connectionUpdateTrigger, setConnectionUpdateTrigger] = useState(0);
+
+  // Fetch users when filters change
+  useEffect(() => {
+    fetchUsers();
+  }, [debouncedSearch, domain, company, year, roleFilter, onlyAvailable, connectionUpdateTrigger]);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const fetchedUsers = await searchUsers({
+        search: debouncedSearch,
+        role: roleFilter,
+        domain,
+        company,
+        passOutYear: year,
+        availableOnly: onlyAvailable,
+      });
+      setUsers(fetchedUsers);
+      
+      // Update filter options from fetched data
+      setDomains([...new Set(fetchedUsers.map(u => u.domain))]);
+      setCompanies([...new Set(fetchedUsers.filter(u => u.company).map(u => u.company))]);
+      setYears([...new Set(fetchedUsers.map(u => u.passOutYear))].sort());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedSearch, domain, company, year, roleFilter, onlyAvailable]);
+
+  return (
+    <DashboardLayout 
+      navItems={NAV} 
+      groupLabel={roleLabel} 
+      userName={currentUser?.name || "User"} 
+      userRole={roleLabel} 
+      userAvatar={currentUser?.avatar || ""} 
+      currentUser={currentUser || undefined}
+    >
+      <h2 className="text-xl font-bold text-foreground mb-1">Discover People</h2>
+      <p className="text-sm text-muted-foreground mb-6">Find alumni and peers from your college</p>
+
+      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+        {/* Filters */}
+        <div className="space-y-5 rounded-lg border bg-card p-5">
+          <div className="space-y-2">
+            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Search</Label>
+            <Input placeholder="Name or skill..." value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Role</Label>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="student">Students</SelectItem>
+                <SelectItem value="alumni">Alumni</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Domain</Label>
+            <Select value={domain} onValueChange={setDomain}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Domains</SelectItem>
+                {domains.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Company</Label>
+            <Select value={company} onValueChange={setCompany}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Companies</SelectItem>
+                {companies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Pass-out Year</Label>
+            <Select value={year} onValueChange={setYear}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Years</SelectItem>
+                {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Available for referrals only</Label>
+            <Switch checked={onlyAvailable} onCheckedChange={setOnlyAvailable} />
+          </div>
+        </div>
+
+        {/* Results */}
+        <div>
+          {loading ? (
+            <div className="rounded-lg border bg-card p-8 text-center">
+              <p className="text-sm text-muted-foreground">Loading users...</p>
+            </div>
+          ) : error ? (
+            <div className="rounded-lg border bg-card p-8 text-center">
+              <p className="text-sm text-red-500">Error: {error}</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground mb-4">{users.length} result{users.length !== 1 ? "s" : ""} — sorted by reputation</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {users.map(u => (
+                  <ProfileCard 
+                    key={u.id} 
+                    user={u} 
+                    onConnectionUpdate={() => setConnectionUpdateTrigger(prev => prev + 1)}
+                  />
+                ))}
+              </div>
+              {users.length === 0 && (
+                <div className="rounded-lg border bg-card p-8 text-center">
+                  <p className="text-sm text-muted-foreground">No users match your filters. Try adjusting your search.</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
+
+Notifications.tsx
+
+import { useState, useEffect } from "react";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { getCurrentUser, getNotifications, markAllNotificationsRead } from "@/lib/api";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Bell } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import type { User } from "@/lib/mock-data";
+
+const NAV = [
+  { title: "Overview", url: "/student", icon: LayoutDashboard },
+  { title: "Discovery", url: "/student/discovery", icon: Search },
+  { title: "Connections", url: "/student/connections", icon: Users },
+  { title: "My Referrals", url: "/student/referrals", icon: FileText },
+  { title: "Posts", url: "/student/posts", icon: Newspaper },
+  { title: "Create Post", url: "/student/create-post", icon: PlusCircle },
+{ title: "My Profile", url: "/student/profile", icon: UserIcon },
+];
+
+const typeConfig: Record<string, { cls: string }> = {
+  connection_request: { cls: "bg-blue-50 text-blue-700 border-blue-200" },
+  referral_update: { cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  admin_notice: { cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  post_relevant: { cls: "bg-purple-50 text-purple-700 border-purple-200" },
+};
+
+export default function Notifications() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchUserAndNotifications = async () => {
+      try {
+        const [userData, notificationsData] = await Promise.all([
+          getCurrentUser(),
+          getNotifications()
+        ]);
+        setCurrentUser(userData);
+        setNotifications(notificationsData);
+
+        // Auto-mark all notifications as read when page loads
+        if (notificationsData.length > 0) {
+          await markAllNotificationsRead();
+          // Update local state to reflect read status
+          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load notifications",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserAndNotifications();
+  }, [toast]);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  if (loading || !currentUser) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  return (
+    <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar}>
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-foreground">Notifications</h2>
+        <p className="text-sm text-muted-foreground">{unreadCount} unread</p>
+      </div>
+
+      <div className="max-w-2xl space-y-3">
+        {notifications.map(n => (
+          <div key={n.id} className={cn("flex items-start gap-3 rounded-lg border p-4", !n.read && "bg-secondary/30")}>
+            <Bell className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-foreground">{n.title}</p>
+                <Badge variant="outline" className={cn("text-xs capitalize", typeConfig[n.type]?.cls)}>{n.type.replace("_", " ")}</Badge>
+                {!n.read && <span className="h-2 w-2 rounded-full bg-primary" />}
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5">{n.message}</p>
+              <p className="text-xs text-muted-foreground mt-1">{new Date(n.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </DashboardLayout>
+  );
+}
+
+ProfileView.tsx
+
+import { useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { PostCard } from "@/components/PostCard";
+import { ReputationBadge, VerificationBadge, AvailabilityIndicator } from "@/components/StatusBadges";
+import { getUserById as getUserByIdAPI, getCurrentUser, sendConnectionRequest, getConnectionStatus, cancelConnectionRequest } from "@/lib/api";
+import { renderAvatar } from "@/lib/utils";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, UserPlus, Eye } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import type { User } from "@/lib/mock-data";
+
+const NAV = [
+  { title: "Overview", url: "/student", icon: LayoutDashboard },
+  { title: "Discovery", url: "/student/discovery", icon: Search },
+  { title: "Connections", url: "/student/connections", icon: Users },
+  { title: "My Referrals", url: "/student/referrals", icon: FileText },
+  { title: "Posts", url: "/student/posts", icon: Newspaper },
+  { title: "Create Post", url: "/student/create-post", icon: PlusCircle },
+  { title: "My Profile", url: "/student/profile", icon: UserIcon },
+];
+
+export default function ProfileView() {
+  const { id } = useParams();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [userLoading, setUserLoading] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<"none" | "pending" | "accepted">("none");
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const userData = await getCurrentUser();
+        setCurrentUser(userData);
+      } catch (error) {
+        console.error("Failed to fetch current user:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (!id) return;
+      try {
+        setUserLoading(true);
+        const [userData, statusData] = await Promise.all([
+          getUserByIdAPI(id),
+          getConnectionStatus(id)
+        ]);
+        setUser(userData);
+        setConnectionStatus(statusData.status);
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+        setUser(null);
+      } finally {
+        setUserLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [id]);
+
+  const handleConnect = async () => {
+    if (!user || isConnecting) return;
+
+    setIsConnecting(true);
+    try {
+      if (connectionStatus === "none") {
+        // Send connection request
+        await sendConnectionRequest(user.id, "career_guidance");
+        setConnectionStatus("pending");
+        toast({
+          title: "Connection request sent",
+          description: "The user will be notified of your request.",
+        });
+      } else if (connectionStatus === "pending") {
+        // Cancel connection request
+        await cancelConnectionRequest(user.id);
+        setConnectionStatus("none");
+        toast({
+          title: "Connection request cancelled",
+          description: "The request has been cancelled.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to process connection request",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  if (loading || !currentUser) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (userLoading) {
+    return (
+      <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Loading user...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!user) {
+    return (
+      <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">User not found</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const userPosts = []; // TODO: Implement posts fetching
+
+  return (
+    <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>
+      <div className="max-w-2xl mx-auto">
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-5">
+              {renderAvatar(user.avatar, user.name)}
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-lg font-bold text-foreground">{user.name}</h3>
+                  {user.role === "alumni" && <VerificationBadge status={user.companyVerified} />}
+                  <ReputationBadge score={user.reputationScore} />
+                </div>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {user.role === "alumni" ? `${user.company} · ` : "Student · "}Class of {user.passOutYear}
+                </p>
+                <p className="text-sm text-muted-foreground">{user.domain}</p>
+                {user.bio && <p className="text-sm text-foreground mt-2">{user.bio}</p>}
+                {user.role === "alumni" && <div className="mt-2"><AvailabilityIndicator available={user.availableForReferrals} /></div>}
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-5 pt-4 border-t">
+              <Button 
+                className="flex-1" 
+                onClick={handleConnect}
+                disabled={connectionStatus === "accepted" || isConnecting}
+              >
+                <UserPlus className="h-4 w-4 mr-1.5" /> 
+                {isConnecting ? (connectionStatus === "pending" ? "Cancelling..." : "Connecting...") : connectionStatus === "pending" ? "Requested" : connectionStatus === "accepted" ? "Connected" : "Connect"}
+              </Button>
+              <Button variant="outline" className="flex-1"><Eye className="h-4 w-4 mr-1.5" /> Follow</Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader><CardTitle className="text-sm text-muted-foreground">Skills</CardTitle></CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex flex-wrap gap-2">
+              {user.skills.map(s => <Badge key={s} variant="secondary">{s}</Badge>)}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader><CardTitle className="text-sm text-muted-foreground">Stats</CardTitle></CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-2xl font-bold tabular-nums text-foreground">{user.reputationScore}</p>
+                <p className="text-xs text-muted-foreground">Reputation</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold tabular-nums text-foreground">{user.referralCount}</p>
+                <p className="text-xs text-muted-foreground">Referrals</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold tabular-nums text-foreground capitalize">{user.currentStatus}</p>
+                <p className="text-xs text-muted-foreground">Status</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* User's Posts - Temporarily disabled */}
+        {userPosts.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Posts by {user.name}</h3>
+            <div className="space-y-4">
+              {userPosts.map(p => <PostCard key={p.id} post={p} />)}
+            </div>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  );
+}
+ 
+in connection router
+
+
+import express from "express";
+import { authenticateToken } from "../middleware/auth.js";
+import Connection from "../models/Connection.js";
+import Notification from "../models/Notification.js";
+import User from "../models/User.js";
+
+const router = express.Router();
+
+// POST /api/connections
+router.post("/", authenticateToken, async (req, res) => {
+  try {
+    const { toUserId, purpose } = req.body;
+    const fromUserId = req.user._id;
+
+    // Validate required fields
+    if (!toUserId || !purpose) {
+      return res.status(400).json({
+        success: false,
+        message: "toUserId and purpose are required",
+      });
+    }
+
+    // Check if users exist
+    const toUser = await User.findById(toUserId);
+    if (!toUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Target user not found",
+      });
+    }
+
+    // Prevent self-connection
+    if (fromUserId.toString() === toUserId) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot connect to yourself",
+      });
+    }
+
+    // Check if active connection already exists (pending or accepted)
+    const existingConnection = await Connection.findOne({
+      $or: [
+        { fromUserId, toUserId },
+        { fromUserId: toUserId, toUserId: fromUserId }
+      ],
+      status: { $in: ["pending", "accepted"] }
+    });
+
+    if (existingConnection) {
+      return res.status(400).json({
+        success: false,
+        message: "Connection already exists",
+      });
+    }
+
+    // Create connection
+    const connection = new Connection({
+      fromUserId,
+      toUserId,
+      purpose,
+    });
+
+    await connection.save();
+
+    // Create notification for recipient
+    const fromUser = await User.findById(fromUserId);
+    const notification = new Notification({
+      userId: toUserId,
+      type: "connection_request",
+      title: "New Connection Request",
+      message: `${fromUser.name} wants to connect with you`,
+      linkTo: `/profile/${fromUserId}`,
+    });
+
+    await notification.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Connection request sent",
+      connection,
+    });
+
+  } catch (error) {
+    console.error("Create connection error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+// GET /api/connections/status/:userId
+router.get("/status/:userId", authenticateToken, async (req, res) => {
+  try {
+    const { userId: targetUserId } = req.params;
+    const currentUserId = req.user._id;
+
+    // Validate target user exists
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Target user not found",
+      });
+    }
+
+    // Check for connection in both directions
+    const connection = await Connection.findOne({
+      $or: [
+        { fromUserId: currentUserId, toUserId: targetUserId },
+        { fromUserId: targetUserId, toUserId: currentUserId }
+      ]
+    });
+
+    let status = "none";
+    if (connection) {
+      // Treat rejected as none (no connection exists)
+      status = connection.status === "rejected" ? "none" : connection.status;
+    }
+
+    res.json({
+      success: true,
+      status,
+    });
+
+  } catch (error) {
+    console.error("Get connection status error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+// DELETE /api/connections/:userId
+router.delete("/:userId", authenticateToken, async (req, res) => {
+  try {
+    const { userId: targetUserId } = req.params;
+    const currentUserId = req.user._id;
+
+    // Find and delete ONLY pending connection between users
+    const connection = await Connection.findOneAndDelete({
+      $or: [
+        { fromUserId: currentUserId, toUserId: targetUserId },
+        { fromUserId: targetUserId, toUserId: currentUserId }
+      ],
+      status: "pending" // Only allow cancelling pending requests
+    });
+
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "No pending connection found to cancel",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Connection request cancelled",
+    });
+
+  } catch (error) {
+    console.error("Cancel connection error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+export default router;
+
+In notification router backend
+
+
+import express from "express";
+import { authenticateToken } from "../middleware/auth.js";
+import Notification from "../models/Notification.js";
+
+const router = express.Router();
+
+// GET /api/notifications
+router.get("/", authenticateToken, async (req, res) => {
+  try {
+    const notifications = await Notification.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .populate("userId", "name");
+
+    res.json({
+      success: true,
+      notifications,
+    });
+  } catch (error) {
+    console.error("Get notifications error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+// PUT /api/notifications/read-all
+router.put("/read-all", authenticateToken, async (req, res) => {
+  try {
+    await Notification.updateMany(
+      { userId: req.user._id, read: false },
+      { read: true }
+    );
+
+    res.json({
+      success: true,
+      message: "All notifications marked as read",
+    });
+  } catch (error) {
+    console.error("Mark read error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+// GET /api/notifications/unread-count
+router.get("/unread-count", authenticateToken, async (req, res) => {
+  try {
+    const unreadCount = await Notification.countDocuments({
+      userId: req.user._id,
+      read: false,
+    });
+
+    res.json({
+      success: true,
+      unreadCount,
+    });
+  } catch (error) {
+    console.error("Get unread count error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+export default router;

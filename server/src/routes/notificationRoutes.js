@@ -45,4 +45,25 @@ router.put("/read-all", authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/notifications/unread-count
+router.get("/unread-count", authenticateToken, async (req, res) => {
+  try {
+    const unreadCount = await Notification.countDocuments({
+      userId: req.user._id,
+      read: false,
+    });
+
+    res.json({
+      success: true,
+      unreadCount,
+    });
+  } catch (error) {
+    console.error("Get unread count error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
 export default router;

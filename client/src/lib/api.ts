@@ -153,6 +153,60 @@ export const sendConnectionRequest = async (toUserId: string, purpose: string) =
 };
 
 /**
+ * Get connection status with another user
+ */
+export const getConnectionStatus = async (userId: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/status/${userId}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get connection status");
+  }
+
+  return data;
+};
+
+/**
+ * Get unread notification count
+ */
+export const getUnreadNotificationCount = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/notifications/unread-count`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get unread count");
+  }
+
+  return data;
+};
+
+/**
+ * Cancel connection request
+ */
+export const cancelConnectionRequest = async (userId: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/${userId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to cancel connection request");
+  }
+
+  return data;
+};
+
+/**
  * Get notifications for current user
  */
 export const getNotifications = async () => {

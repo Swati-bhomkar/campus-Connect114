@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger,
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CareerChatbot } from "@/components/CareerChatbot";
+import { getUnreadNotificationCount } from "@/lib/api";
 import type { User } from "@/lib/mock-data";
 
 interface NavItem {
@@ -104,6 +105,27 @@ function SidebarNav({ navItems, groupLabel, userName, userRole, userAvatar }: Om
 
 export function DashboardLayout({ children, navItems, groupLabel, userName, userRole, userAvatar, currentUser }: DashboardLayoutProps) {
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const data = await getUnreadNotificationCount();
+        setUnreadCount(data.unreadCount);
+      } catch (error) {
+        console.error("Failed to fetch unread count:", error);
+      }
+    };
+
+    fetchUnreadCount();
+  }, [refreshTrigger]);
+
+  const handleNotificationsClick = () => {
+    navigate("/notifications");
+    // Trigger refresh when navigating to notifications
+    setTimeout(() => setRefreshTrigger(prev => prev + 1), 100);
+  };
 
   return (
     <SidebarProvider>
@@ -116,11 +138,13 @@ export function DashboardLayout({ children, navItems, groupLabel, userName, user
               <h1 className="text-sm font-semibold text-foreground hidden sm:block">CampusConnect Pro</h1>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="relative" onClick={() => navigate("/notifications")}>
+              <Button variant="ghost" size="icon" className="relative" onClick={handleNotificationsClick}>
                 <Bell className="h-4 w-4" />
-                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground">
-                  3
-                </span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
               </Button>
             </div>
           </header>

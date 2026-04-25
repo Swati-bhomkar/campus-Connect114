@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PostCard } from "@/components/PostCard";
 import { ReputationBadge, VerificationBadge, AvailabilityIndicator } from "@/components/StatusBadges";
-import { getUserById as getUserByIdAPI, getCurrentUser, sendConnectionRequest } from "@/lib/api";
+import { getUserById as getUserByIdAPI, getCurrentUser, sendConnectionRequest, getConnectionStatus, cancelConnectionRequest } from "@/lib/api";
 import { renderAvatar } from "@/lib/utils";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, UserPlus, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +29,7 @@ export default function ProfileView() {
   const [loading, setLoading] = useState(true);
   const [userLoading, setUserLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<"none" | "pending" | "accepted">("none");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -51,8 +52,12 @@ export default function ProfileView() {
       if (!id) return;
       try {
         setUserLoading(true);
-        const userData = await getUserByIdAPI(id);
+        const [userData, statusData] = await Promise.all([
+          getUserByIdAPI(id),
+          getConnectionStatus(id)
+        ]);
         setUser(userData);
+        setConnectionStatus(statusData.status);
       } catch (error) {
         console.error("Failed to fetch user:", error);
         setUser(null);
@@ -65,18 +70,31 @@ export default function ProfileView() {
   }, [id]);
 
   const handleConnect = async () => {
-    if (!user) return;
+    if (!user || isConnecting) return;
+
     setIsConnecting(true);
     try {
-      await sendConnectionRequest(user.id, "career_guidance");
-      toast({
-        title: "Connection request sent",
-        description: "The user will be notified of your request.",
-      });
+      if (connectionStatus === "none") {
+        // Send connection request
+        await sendConnectionRequest(user.id, "career_guidance");
+        setConnectionStatus("pending");
+        toast({
+          title: "Connection request sent",
+          description: "The user will be notified of your request.",
+        });
+      } else if (connectionStatus === "pending") {
+        // Cancel connection request
+        await cancelConnectionRequest(user.id);
+        setConnectionStatus("none");
+        toast({
+          title: "Connection request cancelled",
+          description: "The request has been cancelled.",
+        });
+      }
     } catch (error) {
       toast({
         title: "Error",
-        description: error?.message || "Failed to send connection request",
+        description: error?.message || "Failed to process connection request",
         variant: "destructive",
       });
     } finally {
@@ -140,10 +158,10 @@ export default function ProfileView() {
               <Button 
                 className="flex-1" 
                 onClick={handleConnect}
-                disabled={isConnecting}
+                disabled={connectionStatus === "accepted" || isConnecting}
               >
                 <UserPlus className="h-4 w-4 mr-1.5" /> 
-                {isConnecting ? "Connecting..." : "Connect"}
+                {isConnecting ? (connectionStatus === "pending" ? "Cancelling..." : "Connecting...") : connectionStatus === "pending" ? "Requested" : connectionStatus === "accepted" ? "Connected" : "Connect"}
               </Button>
               <Button variant="outline" className="flex-1"><Eye className="h-4 w-4 mr-1.5" /> Follow</Button>
             </div>

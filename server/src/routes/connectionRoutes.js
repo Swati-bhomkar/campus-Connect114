@@ -89,4 +89,83 @@ router.post("/", authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/connections/status/:userId
+router.get("/status/:userId", authenticateToken, async (req, res) => {
+  try {
+    const { userId: targetUserId } = req.params;
+    const currentUserId = req.user._id;
+
+    // Validate target user exists
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Target user not found",
+      });
+    }
+
+    // Check for connection in both directions
+    const connection = await Connection.findOne({
+      $or: [
+        { fromUserId: currentUserId, toUserId: targetUserId },
+        { fromUserId: targetUserId, toUserId: currentUserId }
+      ]
+    });
+
+    let status = "none";
+    if (connection) {
+      // Treat rejected as none (no connection exists)
+      status = connection.status === "rejected" ? "none" : connection.status;
+    }
+
+    res.json({
+      success: true,
+      status,
+    });
+
+  } catch (error) {
+    console.error("Get connection status error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+// DELETE /api/connections/:userId
+router.delete("/:userId", authenticateToken, async (req, res) => {
+  try {
+    const { userId: targetUserId } = req.params;
+    const currentUserId = req.user._id;
+
+    // Find and delete ONLY pending connection between users
+    const connection = await Connection.findOneAndDelete({
+      $or: [
+        { fromUserId: currentUserId, toUserId: targetUserId },
+        { fromUserId: targetUserId, toUserId: currentUserId }
+      ],
+      status: "pending" // Only allow cancelling pending requests
+    });
+
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "No pending connection found to cancel",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Connection request cancelled",
+    });
+
+  } catch (error) {
+    console.error("Cancel connection error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
 export default router;

@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { getCurrentUser, getNotifications, markAllNotificationsRead } from "@/lib/api";
-import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Bell, Check } from "lucide-react";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Bell } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@/lib/mock-data";
@@ -40,6 +39,13 @@ export default function Notifications() {
         ]);
         setCurrentUser(userData);
         setNotifications(notificationsData);
+
+        // Auto-mark all notifications as read when page loads
+        if (notificationsData.length > 0) {
+          await markAllNotificationsRead();
+          // Update local state to reflect read status
+          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        }
       } catch (error) {
         toast({
           title: "Error",
@@ -54,22 +60,7 @@ export default function Notifications() {
     fetchUserAndNotifications();
   }, [toast]);
 
-  const handleMarkAllRead = async () => {
-    try {
-      await markAllNotificationsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      toast({
-        title: "Success",
-        description: "All notifications marked as read",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error?.message || "Failed to mark notifications as read",
-        variant: "destructive",
-      });
-    }
-  };
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   if (loading || !currentUser) {
     return (
@@ -79,18 +70,11 @@ export default function Notifications() {
     );
   }
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-
   return (
     <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar}>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-foreground">Notifications</h2>
-          <p className="text-sm text-muted-foreground">{unreadCount} unread</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={handleMarkAllRead}>
-          <Check className="h-3.5 w-3.5 mr-1.5" /> Mark all read
-        </Button>
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-foreground">Notifications</h2>
+        <p className="text-sm text-muted-foreground">{unreadCount} unread</p>
       </div>
 
       <div className="max-w-2xl space-y-3">

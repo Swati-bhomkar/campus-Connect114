@@ -92,10 +92,12 @@ export default function StudentDiscovery() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const [connectionUpdateTrigger, setConnectionUpdateTrigger] = useState(0);
+
   // Fetch users when filters change
   useEffect(() => {
     fetchUsers();
-  }, [debouncedSearch, domain, company, year, roleFilter, onlyAvailable]);
+  }, [debouncedSearch, domain, company, year, roleFilter, onlyAvailable, connectionUpdateTrigger]);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -203,7 +205,11 @@ export default function StudentDiscovery() {
               <p className="text-sm text-muted-foreground mb-4">{users.length} result{users.length !== 1 ? "s" : ""} — sorted by reputation</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {users.map(u => (
-                  <ProfileCard key={u.id} user={u} />
+                  <ProfileCard 
+                    key={u.id} 
+                    user={u} 
+                    onConnectionUpdate={() => setConnectionUpdateTrigger(prev => prev + 1)}
+                  />
                 ))}
               </div>
               {users.length === 0 && (
