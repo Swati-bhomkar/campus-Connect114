@@ -7,6 +7,7 @@ import userRoutes from "./routes/userRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import connectionRoutes from "./routes/connectionRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import postRoutes from "./routes/postRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -45,6 +46,9 @@ app.use("/api/connections", connectionRoutes);
 
 // Notification routes
 app.use("/api/notifications", notificationRoutes);
+
+// Post routes
+app.use("/api/posts", postRoutes);
 
 // 404 handler
 app.use((req, res) => {

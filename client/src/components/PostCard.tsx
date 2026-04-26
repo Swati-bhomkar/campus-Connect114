@@ -36,7 +36,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, className, onDelete, onFlag, showAdminActions, currentUserId }: PostCardProps) {
-  const author = getUserById(post.authorId);
+  const author = post.authorName ? { name: post.authorName, avatar: post.authorAvatar, company: post.company } : getUserById(post.authorId);
   const config = typeConfig[post.type] || typeConfig.job_opening;
   const Icon = config.icon;
   const [imgError, setImgError] = useState(false);

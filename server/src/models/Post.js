@@ -79,10 +79,27 @@ postSchema.pre("save", function(next) {
 
   // Required fields by type
   const requiredFields = {
-    job_opening: ["roleTitle", "location", "employmentType", "applicationLink", "applicationMethod", "eligibleBatches"],
-    internship_opening: ["internshipDuration", "mode", "applicationLink", "applicationMethod", "eligibleBatches"],
-    referral_opportunity: ["roleTitle", "eligibleBatches", "applicationMethod"],
-    event: ["eventCategory", "organizer", "eventMode", "registrationLink", "eventDate"],
+    job_opening: [
+      "roleTitle",
+      "location",
+      "applicationLink"
+    ],
+
+    internship_opening: [
+      "internshipDuration",
+      "mode",
+      "applicationLink"
+    ],
+
+    referral_opportunity: [
+      "roleTitle"
+    ],
+
+    event: [
+      "eventCategory",
+      "organizer",
+      "eventDate"
+    ],
   };
 
   // Enum validations

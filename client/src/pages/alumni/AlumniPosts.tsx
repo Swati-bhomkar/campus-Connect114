@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PostCard } from "@/components/PostCard";
 import { USERS, POSTS, type Post } from "@/lib/mock-data";
+import { getMyPosts } from "@/lib/api";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Settings } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,7 +19,24 @@ const NAV = [
 ];
 
 export default function AlumniPosts() {
-  const [posts, setPosts] = useState<Post[]>([...POSTS]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const fetchedPosts = await getMyPosts();
+        setPosts(fetchedPosts);
+      } catch (error) {
+        console.error("Failed to fetch posts:", error);
+        toast.error("Failed to load posts");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
 
   const handleDelete = (postId: string) => {
     setPosts(prev => prev.filter(p => p.id !== postId));
@@ -30,9 +48,21 @@ export default function AlumniPosts() {
       <h2 className="text-xl font-bold text-foreground mb-1">Posts</h2>
       <p className="text-sm text-muted-foreground mb-6">Professional posts from the network</p>
 
-      <div className="max-w-2xl space-y-4">
-        {posts.map(p => <PostCard key={p.id} post={p} currentUserId={ALUMNI.id} onDelete={handleDelete} />)}
-      </div>
+      {loading ? (
+        <div className="max-w-2xl space-y-4">
+          <div className="animate-pulse">
+            <div className="h-32 bg-muted rounded-lg"></div>
+          </div>
+        </div>
+      ) : posts.length === 0 ? (
+        <div className="max-w-2xl text-center py-12">
+          <p className="text-muted-foreground">No posts yet. Create your first post!</p>
+        </div>
+      ) : (
+        <div className="max-w-2xl space-y-4">
+          {posts.map(p => <PostCard key={p.id} post={p} currentUserId={ALUMNI.id} onDelete={handleDelete} />)}
+        </div>
+      )}
     </DashboardLayout>
   );
 }

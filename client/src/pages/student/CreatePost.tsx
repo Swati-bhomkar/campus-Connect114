@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { USERS } from "@/lib/mock-data";
+import { createPost } from "@/lib/api";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Upload, X, ImageIcon, AlertCircle, Settings } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
@@ -118,7 +119,7 @@ export default function CreatePost() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!postType || !title.trim() || !description.trim() || !company.trim() || !domain.trim()) {
       toast.error("Please fill all required fields.");
       return;
@@ -147,21 +148,24 @@ export default function CreatePost() {
       }
     }
 
-    // Construct payload (for future API integration)
-    const payload = {
-      authorId: currentUser.id,
-      type: postType,
-      title: title.trim(),
-      description: description.trim(),
-      company: company.trim(),
-      domain: domain.trim(),
-      imageUrl: imagePreview, // In real implementation, this would be uploaded URL
-      metadata,
-    };
+    try {
+      const payload = {
+        type: postType,
+        title: title.trim(),
+        description: description.trim(),
+        company: company.trim(),
+        domain: domain.trim(),
+        metadata,
+        imageUrl: imagePreview, // TODO: Replace with proper file upload/storage
+      };
 
-    console.log("Post payload:", payload); // For debugging
-    toast.success("Post published successfully!");
-    navigate(isAlumni ? "/alumni/posts" : "/student/posts");
+      await createPost(payload);
+      toast.success("Post published successfully!");
+      navigate(isAlumni ? "/alumni/posts" : "/student/posts");
+    } catch (error) {
+      console.error("Failed to create post:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to create post");
+    }
   };
 
   return (

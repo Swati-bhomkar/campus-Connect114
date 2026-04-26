@@ -313,3 +313,48 @@ export const rejectConnection = async (connectionId: string) => {
 
   return data;
 };
+
+/**
+ * Create a new post
+ */
+export const createPost = async (postData: {
+  type: string;
+  title: string;
+  description: string;
+  company: string;
+  domain: string;
+  metadata: object;
+  imageUrl?: string;
+}) => {
+  const response = await fetch(`${API_BASE_URL}/api/posts`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(postData),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to create post");
+  }
+
+  return data.post;
+};
+
+/**
+ * Get current user's posts
+ */
+export const getMyPosts = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/posts/me`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to fetch posts");
+  }
+
+  return data.posts;
+};
