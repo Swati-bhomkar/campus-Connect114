@@ -55,6 +55,7 @@ type PostMetadata = {
   roleTitle?: string;
   location?: string;
   applicationLink?: string;
+  eligibleBatches?: number[];
   referralAvailable?: boolean;
   internshipDuration?: string;
   mode?: string;
@@ -263,6 +264,29 @@ export default function CreatePost() {
                   />
                   <Label htmlFor="referralAvailable">Referral Available</Label>
                 </div>
+                <div className="space-y-2">
+                  <Label>Eligible Batches</Label>
+                  <p className="text-xs text-muted-foreground">Select which graduation years are eligible</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[2021, 2022, 2023, 2024, 2025, 2026, 2027].map(year => (
+                      <div key={year} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`batch-${year}`}
+                          checked={(metadata.eligibleBatches || []).includes(year)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setMetadata(prev => ({ ...prev, eligibleBatches: [...(prev.eligibleBatches || []), year].sort() }));
+                            } else {
+                              setMetadata(prev => ({ ...prev, eligibleBatches: (prev.eligibleBatches || []).filter(b => b !== year) }));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`batch-${year}`} className="text-sm font-normal">{year}</Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -306,6 +330,29 @@ export default function CreatePost() {
                     onChange={e => setMetadata(prev => ({ ...prev, ppoAvailable: Boolean(e.target.checked) }))}
                   />
                   <Label htmlFor="ppoAvailable">PPO Available</Label>
+                </div>
+                <div className="space-y-2">
+                  <Label>Eligible Batches</Label>
+                  <p className="text-xs text-muted-foreground">Select which graduation years are eligible</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[2021, 2022, 2023, 2024, 2025, 2026, 2027].map(year => (
+                      <div key={year} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`internship-batch-${year}`}
+                          checked={(metadata.eligibleBatches || []).includes(year)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setMetadata(prev => ({ ...prev, eligibleBatches: [...(prev.eligibleBatches || []), year].sort() }));
+                            } else {
+                              setMetadata(prev => ({ ...prev, eligibleBatches: (prev.eligibleBatches || []).filter(b => b !== year) }));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`internship-batch-${year}`} className="text-sm font-normal">{year}</Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

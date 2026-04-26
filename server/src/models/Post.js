@@ -140,6 +140,17 @@ postSchema.pre("save", function(next) {
     post.metadata.slotsRemaining = post.metadata.referralSlots || 1;
   }
 
+  // Optional: Support eligibleBatches for job_opening and internship_opening
+  if (post.metadata.eligibleBatches && Array.isArray(post.metadata.eligibleBatches)) {
+    // Lightweight validation - ensure all elements are numbers
+    const validBatches = post.metadata.eligibleBatches.every(batch => 
+      typeof batch === "number" && batch >= 2021 && batch <= 2027
+    );
+    if (!validBatches) {
+      return next(new Error("eligibleBatches must be an array of numbers between 2021 and 2027"));
+    }
+  }
+
   next();
 });
 

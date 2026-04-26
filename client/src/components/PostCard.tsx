@@ -14,9 +14,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { Post } from "@/lib/mock-data";
 import { getUserById } from "@/lib/mock-data";
-import { Briefcase, Trophy, Award, Megaphone, ExternalLink, GraduationCap, ImageIcon, Trash2 } from "lucide-react";
+import { Briefcase, Trophy, Award, Megaphone, ExternalLink, GraduationCap, ImageIcon, Trash2, MapPin, Clock, Monitor, Calendar, Tag, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { toast } from "sonner";
 
 const typeConfig: Record<string, { icon: typeof Briefcase; label: string; cls: string }> = {
   job_opening: { icon: Briefcase, label: "Job Opening", cls: "bg-blue-50 text-blue-700 border-blue-200" },
@@ -24,6 +25,7 @@ const typeConfig: Record<string, { icon: typeof Briefcase; label: string; cls: s
   internship_opening: { icon: GraduationCap, label: "Internship Opening", cls: "bg-teal-50 text-teal-700 border-teal-200" },
   hackathon_achievement: { icon: Trophy, label: "Hackathon Achievement", cls: "bg-amber-50 text-amber-700 border-amber-200" },
   referral_opportunity: { icon: Megaphone, label: "Referral Opportunity", cls: "bg-purple-50 text-purple-700 border-purple-200" },
+  event: { icon: Calendar, label: "Event", cls: "bg-orange-50 text-orange-700 border-orange-200" },
 };
 
 interface PostCardProps {
@@ -82,21 +84,132 @@ export function PostCard({ post, className, onDelete, onFlag, showAdminActions, 
           </div>
         )}
 
+        {/* Metadata rendering - conditional based on metadata existence */}
         <div className="mt-3 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
           <span className="rounded bg-secondary px-2 py-0.5">{post.domain}</span>
           <span className="rounded bg-secondary px-2 py-0.5">{post.company}</span>
-          <span className="rounded bg-secondary px-2 py-0.5">Batch {post.batch}</span>
-          {post.imageUrl && (
-            <span className="inline-flex items-center gap-1 text-muted-foreground">
-              <ImageIcon className="h-3 w-3" /> Image
-            </span>
-          )}
-          {post.jobLink && (
-            <a href={post.jobLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline ml-auto">
-              Apply <ExternalLink className="h-3 w-3" />
-            </a>
+          
+          {/* New metadata rendering - only if metadata exists */}
+          {post.metadata ? (
+            <>
+              {/* Job Opening metadata */}
+              {post.type === "job_opening" && (
+                <>
+                  {post.metadata.location && (
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="h-3 w-3" /> {post.metadata.location}
+                    </span>
+                  )}
+                  {post.metadata.eligibleBatches?.length > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <GraduationCap className="h-3 w-3" /> Eligible: {post.metadata.eligibleBatches.join(", ")}
+                    </span>
+                  )}
+                </>
+              )}
+
+              {/* Internship Opening metadata */}
+              {post.type === "internship_opening" && (
+                <>
+                  {post.metadata.internshipDuration && (
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> {post.metadata.internshipDuration}
+                    </span>
+                  )}
+                  {post.metadata.mode && (
+                    <span className="inline-flex items-center gap-1">
+                      <Monitor className="h-3 w-3" /> {post.metadata.mode}
+                    </span>
+                  )}
+                  {post.metadata.eligibleBatches?.length > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <GraduationCap className="h-3 w-3" /> Eligible: {post.metadata.eligibleBatches.join(", ")}
+                    </span>
+                  )}
+                </>
+              )}
+
+              {/* Referral Opportunity metadata */}
+              {post.type === "referral_opportunity" && post.metadata.deadline && (
+                <span className="inline-flex items-center gap-1">
+                  <Calendar className="h-3 w-3" /> Deadline: {new Date(post.metadata.deadline).toLocaleDateString("en-IN")}
+                </span>
+              )}
+
+              {/* Event metadata */}
+              {post.type === "event" && (
+                <>
+                  {post.metadata.eventCategory && (
+                    <span className="inline-flex items-center gap-1">
+                      <Tag className="h-3 w-3" /> {post.metadata.eventCategory}
+                    </span>
+                  )}
+                  {post.metadata.eventDate && (
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="h-3 w-3" /> {new Date(post.metadata.eventDate).toLocaleDateString("en-IN")}
+                    </span>
+                  )}
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Fallback: old metadata for backward compatibility */}
+              {post.batch !== undefined && (
+                <span className="rounded bg-secondary px-2 py-0.5">Batch {post.batch}</span>
+              )}
+              {post.jobLink && (
+                <a href={post.jobLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline ml-auto">
+                  Apply <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </>
           )}
         </div>
+
+        {/* Type-specific action buttons */}
+        {post.metadata && (
+          <div className="mt-3 flex gap-2 flex-wrap">
+            {post.type === "job_opening" && post.metadata.applicationLink && (
+              <a
+                href={post.metadata.applicationLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+              >
+                <ExternalLink className="h-3 w-3" /> Apply Now
+              </a>
+            )}
+            {post.type === "internship_opening" && post.metadata.applicationLink && (
+              <a
+                href={post.metadata.applicationLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-teal-100 text-teal-700 hover:bg-teal-200 transition-colors"
+              >
+                <ExternalLink className="h-3 w-3" /> Apply Internship
+              </a>
+            )}
+            {post.type === "referral_opportunity" && (
+              <button
+                onClick={() => toast.success("Request feature coming soon")}
+                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
+              >
+                <Send className="h-3 w-3" /> Send Request
+              </button>
+            )}
+            {post.type === "event" && post.metadata.registrationLink && (
+              <a
+                href={post.metadata.registrationLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors"
+              >
+                <ExternalLink className="h-3 w-3" /> Register
+              </a>
+            )}
+          </div>
+        )}
 
         {/* Owner delete button */}
         {isOwner && !showAdminActions && onDelete && (
