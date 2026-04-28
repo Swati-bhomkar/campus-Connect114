@@ -1,4 +1,5 @@
 import Post from "../models/Post.js";
+import Connection from "../models/Connection.js";
 
 /**
  * Create a new post
@@ -30,7 +31,7 @@ export const createPost = async (req, res) => {
 
     // Add lightweight author fields
     postResponse.authorName = req.user.name;
-    postResponse.authorAvatar = req.user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(req.user.name)}&scale=80`;
+    postResponse.authorAvatar = req.user.avatar || "";
 
     res.status(201).json({
       success: true,
@@ -73,7 +74,7 @@ export const getMyPosts = async (req, res) => {
       flagged: post.flagged,
       metadata: post.metadata,
       authorName: req.user.name,
-      authorAvatar: req.user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(req.user.name)}&scale=80`,
+      authorAvatar: req.user.avatar || "",
     }));
 
     res.status(200).json({
@@ -85,6 +86,73 @@ export const getMyPosts = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch posts",
+    });
+  }
+};
+
+/**
+ * Get network feed posts (current user + connected users)
+ * GET /api/posts/feed
+ */
+export const getFeedPosts = async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+
+    // Get accepted connections
+    const connections = await Connection.find({
+      $or: [
+        { fromUserId: currentUserId },
+        { toUserId: currentUserId }
+      ],
+      status: "accepted",
+    }).lean();
+
+    // Extract connected user IDs
+    const connectedUserIds = connections.map(conn => 
+      conn.fromUserId.toString() === currentUserId.toString() 
+        ? conn.toUserId 
+        : conn.fromUserId
+    );
+
+    // Include current user
+    const authorIds = [currentUserId, ...connectedUserIds];
+
+    // Get posts from current user and connected users
+    const posts = await Post.find({
+      authorId: { $in: authorIds },
+      status: "published",
+    })
+      .sort({ createdAt: -1 })
+      .populate("authorId", "name avatar company passOutYear")
+      .lean();
+
+    // Transform posts
+    const transformedPosts = posts.map(post => ({
+      id: post._id.toString(),
+      authorId: post.authorId._id.toString(),
+      type: post.type,
+      title: post.title,
+      description: post.description,
+      company: post.company,
+      domain: post.domain,
+      batch: post.authorId.passOutYear,
+      createdAt: post.createdAt.toISOString(),
+      imageUrl: post.imageUrl,
+      flagged: post.flagged,
+      metadata: post.metadata,
+      authorName: post.authorId.name,
+      authorAvatar: post.authorId.avatar || "",
+    }));
+
+    res.status(200).json({
+      success: true,
+      posts: transformedPosts,
+    });
+  } catch (error) {
+    console.error("Get feed posts error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch feed posts",
     });
   }
 };

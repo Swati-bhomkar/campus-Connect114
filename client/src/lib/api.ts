@@ -358,3 +358,21 @@ export const getMyPosts = async () => {
 
   return data.posts;
 };
+
+/**
+ * Get network feed posts
+ */
+export const getFeedPosts = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/posts/feed`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to fetch feed posts");
+  }
+
+  return data.posts;
+};

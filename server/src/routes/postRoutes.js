@@ -1,5 +1,5 @@
 import express from "express";
-import { createPost, getMyPosts } from "../controllers/postController.js";
+import { createPost, getMyPosts, getFeedPosts } from "../controllers/postController.js";
 import { authenticateToken } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -12,5 +12,8 @@ router.post("/", createPost);
 
 // GET /api/posts/me - Get current user's posts
 router.get("/me", getMyPosts);
+
+// GET /api/posts/feed - Get network feed posts
+router.get("/feed", getFeedPosts);
 
 export default router;

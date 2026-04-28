@@ -15,7 +15,7 @@ import {
 import type { Post } from "@/lib/mock-data";
 import { getUserById } from "@/lib/mock-data";
 import { Briefcase, Trophy, Award, Megaphone, ExternalLink, GraduationCap, ImageIcon, Trash2, MapPin, Clock, Monitor, Calendar, Tag, Send } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, renderAvatar } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -49,11 +49,7 @@ export function PostCard({ post, className, onDelete, onFlag, showAdminActions, 
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            {author && (
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">
-                {author.avatar}
-              </div>
-            )}
+            {author && renderAvatar(author.avatar, author.name, "h-9 w-9")}
             <div>
               <span className="text-sm font-medium text-foreground">{author?.name}</span>
               <p className="text-xs text-muted-foreground">

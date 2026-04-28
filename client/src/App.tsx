@@ -26,6 +26,7 @@ import AlumniDashboard from "./pages/alumni/AlumniDashboard";
 import AlumniRequests from "./pages/alumni/AlumniRequests";
 import AlumniSettings from "./pages/alumni/AlumniSettings";
 import AlumniPosts from "./pages/alumni/AlumniPosts";
+import AlumniFeed from "./pages/alumni/AlumniFeed";
 import AlumniProfile from "./pages/alumni/AlumniProfile";
 
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -68,6 +69,7 @@ const App = () => (
           <Route path="/alumni/requests" element={<AlumniRequests />} />
           <Route path="/alumni/connections" element={<StudentConnections />} />
           <Route path="/alumni/posts" element={<AlumniPosts />} />
+          <Route path="/alumni/feed" element={<AlumniFeed />} />
           <Route path="/alumni/create-post" element={<CreatePost />} />
           <Route path="/alumni/settings" element={<AlumniSettings />} />
           <Route path="/alumni/profile" element={<AlumniProfile />} />
