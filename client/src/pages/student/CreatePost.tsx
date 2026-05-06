@@ -68,6 +68,14 @@ type PostMetadata = {
   eventMode?: string;
   registrationLink?: string;
   eventDate?: string;
+  // Student achievement fields
+  duration?: string;
+  stipend?: string;
+  certificateLink?: string;
+  hackathonName?: string;
+  position?: string;
+  teamSize?: number;
+  projectTitle?: string;
 };
 
 export default function CreatePost() {
@@ -148,6 +156,7 @@ export default function CreatePost() {
         return;
       }
     }
+    // Student achievement posts have no required metadata fields
 
     try {
       const payload = {
@@ -442,6 +451,81 @@ export default function CreatePost() {
                     type="datetime-local"
                     value={metadata.eventDate || ""}
                     onChange={e => setMetadata(prev => ({ ...prev, eventDate: e.target.value }))}
+                  />
+                </div>
+              </div>
+            )}
+
+            {postType === "internship_achievement" && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Role Title</Label>
+                  <Input
+                    placeholder="e.g. Software Engineering Intern"
+                    value={metadata.roleTitle || ""}
+                    onChange={e => setMetadata(prev => ({ ...prev, roleTitle: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Duration</Label>
+                  <Input
+                    placeholder="e.g. 3 months"
+                    value={metadata.duration || ""}
+                    onChange={e => setMetadata(prev => ({ ...prev, duration: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Stipend</Label>
+                  <Input
+                    placeholder="e.g. ₹15,000/month"
+                    value={metadata.stipend || ""}
+                    onChange={e => setMetadata(prev => ({ ...prev, stipend: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Certificate Link</Label>
+                  <Input
+                    placeholder="https://certificate.example.com"
+                    value={metadata.certificateLink || ""}
+                    onChange={e => setMetadata(prev => ({ ...prev, certificateLink: e.target.value }))}
+                  />
+                </div>
+              </div>
+            )}
+
+            {postType === "hackathon_achievement" && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Hackathon Name</Label>
+                  <Input
+                    placeholder="e.g. Smart India Hackathon"
+                    value={metadata.hackathonName || ""}
+                    onChange={e => setMetadata(prev => ({ ...prev, hackathonName: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Position</Label>
+                  <Input
+                    placeholder="e.g. 1st Place"
+                    value={metadata.position || ""}
+                    onChange={e => setMetadata(prev => ({ ...prev, position: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Team Size</Label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 4"
+                    value={metadata.teamSize ?? ""}
+                    onChange={e => setMetadata(prev => ({ ...prev, teamSize: e.target.value ? parseInt(e.target.value) : undefined }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Project Title</Label>
+                  <Input
+                    placeholder="e.g. AI-Powered Healthcare Assistant"
+                    value={metadata.projectTitle || ""}
+                    onChange={e => setMetadata(prev => ({ ...prev, projectTitle: e.target.value }))}
                   />
                 </div>
               </div>

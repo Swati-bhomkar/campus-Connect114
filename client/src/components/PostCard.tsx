@@ -147,6 +147,48 @@ export function PostCard({ post, className, onDelete, onFlag, showAdminActions, 
                   )}
                 </>
               )}
+
+              {/* Internship Achievement metadata */}
+              {post.type === "internship_achievement" && (
+                <>
+                  {post.metadata.roleTitle && (
+                    <span className="inline-flex items-center gap-1">
+                      <Briefcase className="h-3 w-3" /> {post.metadata.roleTitle}
+                    </span>
+                  )}
+                  {post.metadata.duration && (
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> {post.metadata.duration}
+                    </span>
+                  )}
+                  {post.metadata.stipend && (
+                    <span className="inline-flex items-center gap-1">
+                      <Award className="h-3 w-3" /> {post.metadata.stipend}
+                    </span>
+                  )}
+                </>
+              )}
+
+              {/* Hackathon Achievement metadata */}
+              {post.type === "hackathon_achievement" && (
+                <>
+                  {post.metadata.hackathonName && (
+                    <span className="inline-flex items-center gap-1">
+                      <Trophy className="h-3 w-3" /> {post.metadata.hackathonName}
+                    </span>
+                  )}
+                  {post.metadata.position && (
+                    <span className="inline-flex items-center gap-1">
+                      <Award className="h-3 w-3" /> {post.metadata.position}
+                    </span>
+                  )}
+                  {post.metadata.projectTitle && (
+                    <span className="inline-flex items-center gap-1">
+                      <Tag className="h-3 w-3" /> {post.metadata.projectTitle}
+                    </span>
+                  )}
+                </>
+              )}
             </>
           ) : (
             <>

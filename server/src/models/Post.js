@@ -8,7 +8,7 @@ const postSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["job_opening", "internship_opening", "referral_opportunity", "event"],
+    enum: ["job_opening", "internship_opening", "referral_opportunity", "event", "internship_achievement", "hackathon_achievement"],
     required: true,
   },
   title: {
@@ -111,7 +111,8 @@ postSchema.pre("save", function(next) {
 
   const fields = requiredFields[post.type];
   if (!fields) {
-    return next(new Error(`Invalid post type: ${post.type}`));
+    // For post types without required metadata fields (like achievements), skip validation
+    return next();
   }
 
   // Check required fields exist
