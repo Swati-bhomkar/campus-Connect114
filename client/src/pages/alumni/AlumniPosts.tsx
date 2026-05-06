@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PostCard } from "@/components/PostCard";
-import { USERS, POSTS, type Post } from "@/lib/mock-data";
-import { getMyPosts } from "@/lib/api";
-import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Settings } from "lucide-react";
+import { USERS, type Post } from "@/lib/mock-data";
+import { getFeedPosts } from "@/lib/api";
+import {LayoutDashboard,Search,Users,FileText,Newspaper,PlusCircle,User,Settings,} from "lucide-react";
 import { toast } from "sonner";
 
 const ALUMNI = USERS.find(u => u.id === "u1")!;
+
 const NAV = [
   { title: "Overview", url: "/alumni", icon: LayoutDashboard },
   { title: "Discovery", url: "/alumni/discovery", icon: Search },
@@ -25,7 +26,8 @@ export default function AlumniPosts() {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const fetchedPosts = await getMyPosts();
+        // CHANGED: using feed API instead of my posts API
+        const fetchedPosts = await getFeedPosts();
         setPosts(fetchedPosts);
       } catch (error) {
         console.error("Failed to fetch posts:", error);
@@ -44,9 +46,21 @@ export default function AlumniPosts() {
   };
 
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Alumni" userName={ALUMNI.name} userRole="Alumni" userAvatar={ALUMNI.avatar} currentUser={ALUMNI}>
-      <h2 className="text-xl font-bold text-foreground mb-1">Posts</h2>
-      <p className="text-sm text-muted-foreground mb-6">Professional posts from the network</p>
+    <DashboardLayout
+      navItems={NAV}
+      groupLabel="Alumni"
+      userName={ALUMNI.name}
+      userRole="Alumni"
+      userAvatar={ALUMNI.avatar}
+      currentUser={ALUMNI}
+    >
+      <h2 className="text-xl font-bold text-foreground mb-1">
+        Network Posts
+      </h2>
+
+      <p className="text-sm text-muted-foreground mb-6">
+        Posts from you and your connected students/alumni
+      </p>
 
       {loading ? (
         <div className="max-w-2xl space-y-4">
@@ -56,11 +70,20 @@ export default function AlumniPosts() {
         </div>
       ) : posts.length === 0 ? (
         <div className="max-w-2xl text-center py-12">
-          <p className="text-muted-foreground">No posts yet. Create your first post!</p>
+          <p className="text-muted-foreground">
+            No posts yet. Create your first post!
+          </p>
         </div>
       ) : (
         <div className="max-w-2xl space-y-4">
-          {posts.map(p => <PostCard key={p.id} post={p} currentUserId={ALUMNI.id} onDelete={handleDelete} />)}
+          {posts.map(p => (
+            <PostCard
+              key={p.id}
+              post={p}
+              currentUserId={ALUMNI.id}
+              onDelete={handleDelete}
+            />
+          ))}
         </div>
       )}
     </DashboardLayout>

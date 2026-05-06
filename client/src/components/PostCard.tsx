@@ -1,19 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import type { Post } from "@/lib/mock-data";
-import { getUserById } from "@/lib/mock-data";
+import {AlertDialog,AlertDialogAction,AlertDialogCancel,AlertDialogContent,AlertDialogDescription,AlertDialogFooter,AlertDialogHeader,AlertDialogTitle,AlertDialogTrigger,} from "@/components/ui/alert-dialog";
 import { Briefcase, Trophy, Award, Megaphone, ExternalLink, GraduationCap, ImageIcon, Trash2, MapPin, Clock, Monitor, Calendar, Tag, Send } from "lucide-react";
 import { cn, renderAvatar } from "@/lib/utils";
 import { useState } from "react";
@@ -28,6 +16,60 @@ const typeConfig: Record<string, { icon: typeof Briefcase; label: string; cls: s
   event: { icon: Calendar, label: "Event", cls: "bg-orange-50 text-orange-700 border-orange-200" },
 };
 
+interface PostMetadata {
+  location?: string;
+  eligibleBatches?: string[];
+  applicationLink?: string;
+
+  internshipDuration?: string;
+  mode?: string;
+
+  deadline?: string;
+
+  eventCategory?: string;
+  eventDate?: string;
+  registrationLink?: string;
+
+  roleTitle?: string;
+  duration?: string;
+  stipend?: string;
+
+  hackathonName?: string;
+  position?: string;
+  projectTitle?: string;
+}
+
+interface Post {
+  id: string;
+  authorId: string;
+
+  authorName?: string;
+  authorAvatar?: string;
+
+  title: string;
+  description: string;
+
+  type:
+    | "job_opening"
+    | "internship_opening"
+    | "internship_achievement"
+    | "hackathon_achievement"
+    | "referral_opportunity"
+    | "event";
+
+  company: string;
+  domain: string;
+
+  createdAt: string;
+
+  batch?: number;
+  jobLink?: string;
+  imageUrl?: string;
+  flagged?: boolean;
+
+  metadata?: PostMetadata;
+}
+
 interface PostCardProps {
   post: Post;
   className?: string;
@@ -38,7 +80,11 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, className, onDelete, onFlag, showAdminActions, currentUserId }: PostCardProps) {
-  const author = post.authorName ? { name: post.authorName, avatar: post.authorAvatar, company: post.company } : getUserById(post.authorId);
+const author = {
+  name: post.authorName || "Unknown User",
+  avatar: post.authorAvatar || "",
+  company: post.company,
+};
   const config = typeConfig[post.type] || typeConfig.job_opening;
   const Icon = config.icon;
   const [imgError, setImgError] = useState(false);
