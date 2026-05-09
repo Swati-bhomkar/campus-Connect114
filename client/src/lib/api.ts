@@ -376,3 +376,100 @@ export const getFeedPosts = async () => {
 
   return data.posts;
 };
+
+/**
+ * Get a single post by ID
+ */
+export const getPostById = async (id: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/posts/${id}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to fetch post");
+  }
+
+  return data.post;
+};
+
+/**
+ * Create a referral request
+ */
+export const createReferralRequest = async (requestData: {
+  referralPostId: string;
+  motivation?: string;
+  linkedinUrl?: string;
+  resumeUrl: string;
+}) => {
+  const response = await fetch(`${API_BASE_URL}/api/referrals`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(requestData),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to create referral request");
+  }
+
+  return data.data;
+};
+
+/**
+ * Get sent referral requests
+ */
+export const getSentReferralRequests = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/referrals/sent`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to fetch sent requests");
+  }
+
+  return data.data;
+};
+
+/**
+ * Get received referral requests
+ */
+export const getReceivedReferralRequests = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/referrals/received`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to fetch received requests");
+  }
+
+  return data.data;
+};
+
+/**
+ * Update referral request status
+ */
+export const updateReferralRequestStatus = async (requestId: string, status: "accepted" | "rejected") => {
+  const response = await fetch(`${API_BASE_URL}/api/referrals/${requestId}/status`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to update request status");
+  }
+
+  return data.data;
+};

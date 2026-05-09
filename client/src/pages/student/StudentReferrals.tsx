@@ -1,9 +1,10 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ReferralRequestCard } from "@/components/ReferralRequestCard";
 import { Button } from "@/components/ui/button";
-import { USERS, getReferralRequestsForUser } from "@/lib/mock-data";
+import { getReferralRequestsForUser } from "@/lib/mock-data";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 const NAV = [
   { title: "Overview", url: "/student", icon: LayoutDashboard },
@@ -15,14 +16,17 @@ const NAV = [
   { title: "My Profile", url: "/student/profile", icon: User },
 ];
 
-const STUDENT = USERS.find(u => u.id === "u4")!;
-
 export default function StudentReferrals() {
   const navigate = useNavigate();
-  const referrals = getReferralRequestsForUser(STUDENT.id, "sent");
+  const { currentUser, loading } = useAuth();
+  const referrals = currentUser ? getReferralRequestsForUser(currentUser.id, "sent") : [];
+
+  if (loading || !currentUser) {
+    return null;
+  }
 
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Student" userName={STUDENT.name} userRole="Student" userAvatar={STUDENT.avatar} currentUser={STUDENT}>
+    <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-bold text-foreground">My Referral Requests</h2>

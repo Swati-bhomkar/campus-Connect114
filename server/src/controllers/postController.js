@@ -156,3 +156,78 @@ export const getFeedPosts = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get a single post by ID
+ * GET /api/posts/:id
+ */
+export const getPostById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Support both id and _id during migration
+    const query = id.match(/^[0-9a-fA-F]{24}$/) ? { _id: id } : { id };
+
+    const post = await Post.findOne(query)
+      .populate("authorId", "name avatar company passOutYear")
+      .lean();
+
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found",
+      });
+    }
+
+    // Check if user can view this post (own post or connected user)
+    const currentUserId = req.user._id;
+    const isOwnPost = post.authorId._id.toString() === currentUserId.toString();
+
+    if (!isOwnPost) {
+      // Check if connected
+      const connection = await Connection.findOne({
+        $or: [
+          { fromUserId: currentUserId, toUserId: post.authorId._id },
+          { fromUserId: post.authorId._id, toUserId: currentUserId }
+        ],
+        status: "accepted",
+      });
+
+      if (!connection) {
+        return res.status(403).json({
+          success: false,
+          message: "You can only view posts from your connections",
+        });
+      }
+    }
+
+    // Transform post
+    const transformedPost = {
+      id: post._id.toString(),
+      authorId: post.authorId._id.toString(),
+      type: post.type,
+      title: post.title,
+      description: post.description,
+      company: post.company,
+      domain: post.domain,
+      batch: post.authorId.passOutYear,
+      createdAt: post.createdAt.toISOString(),
+      imageUrl: post.imageUrl,
+      flagged: post.flagged,
+      metadata: post.metadata,
+      authorName: post.authorId.name,
+      authorAvatar: post.authorId.avatar || "",
+    };
+
+    res.status(200).json({
+      success: true,
+      post: transformedPost,
+    });
+  } catch (error) {
+    console.error("Get post by ID error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch post",
+    });
+  }
+};

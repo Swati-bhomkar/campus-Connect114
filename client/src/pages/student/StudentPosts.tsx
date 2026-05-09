@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PostCard } from "@/components/PostCard";
-import { USERS, POSTS, type Post } from "@/lib/mock-data";
 import { getFeedPosts } from "@/lib/api";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
+import type { Post } from "@/lib/mock-data";
 
 const NAV = [
   { title: "Overview", url: "/student", icon: LayoutDashboard },
@@ -16,9 +17,8 @@ const NAV = [
   { title: "My Profile", url: "/student/profile", icon: User },
 ];
 
-const STUDENT = USERS.find(u => u.id === "u4")!;
-
 export default function StudentPosts() {
+  const { currentUser, loading: authLoading } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,8 +43,12 @@ export default function StudentPosts() {
     toast.success("Post deleted successfully");
   };
 
+  if (authLoading || !currentUser) {
+    return null;
+  }
+
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Student" userName={STUDENT.name} userRole="Student" userAvatar={STUDENT.avatar} currentUser={STUDENT}>
+    <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>
       <h2 className="text-xl font-bold text-foreground mb-1">Network Posts</h2>
       <p className="text-sm text-muted-foreground mb-6">Posts from you and your connected alumni</p>
 
@@ -61,7 +65,7 @@ export default function StudentPosts() {
       ) : (
         <div className="max-w-2xl space-y-4">
           {posts.map(p => (
-            <PostCard key={p.id} post={p} currentUserId={STUDENT.id} onDelete={handleDelete} />
+            <PostCard key={p.id} post={p} currentUserId={currentUser.id} onDelete={handleDelete} />
           ))}
         </div>
       )}

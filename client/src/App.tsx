@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/context/AuthContext";
 
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -44,8 +45,9 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
           {/* Auth */}
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
@@ -58,7 +60,7 @@ const App = () => (
           <Route path="/student/discovery" element={<StudentDiscovery />} />
           <Route path="/student/connections" element={<StudentConnections />} />
           <Route path="/student/referrals" element={<StudentReferrals />} />
-          <Route path="/student/create-referral" element={<CreateReferralRequest />} />
+          <Route path="/student/create-referral-request/:postId" element={<CreateReferralRequest />} />
           <Route path="/student/posts" element={<StudentPosts />} />
           <Route path="/student/create-post" element={<CreatePost />} />
           <Route path="/student/profile" element={<StudentProfile />} />
@@ -90,6 +92,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

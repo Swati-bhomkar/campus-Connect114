@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, AlertCircle, Loader2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 // API Base URL configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -25,6 +26,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const { login } = useAuth();
 
   const handleLogin = async () => {
     setError(null);
@@ -51,14 +53,11 @@ export default function Login() {
         throw new Error(data.message || "Login failed");
       }
 
-      // Store token and user in localStorage
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      if (!data.user?.role) {
-        navigate("/login");
-        return;
+      if (!data.user?.role || !data.token) {
+        throw new Error("Invalid login response");
       }
+
+      login(data.token, data.user);
 
       const userRole = data.user.role;
       if (userRole === "admin") {

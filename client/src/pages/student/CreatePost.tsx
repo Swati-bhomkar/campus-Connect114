@@ -6,11 +6,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { USERS } from "@/lib/mock-data";
 import { createPost } from "@/lib/api";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Upload, X, ImageIcon, AlertCircle, Settings } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
 const STUDENT_NAV = [
   { title: "Overview", url: "/student", icon: LayoutDashboard },
@@ -33,8 +33,6 @@ const ALUMNI_NAV = [
   { title: "My Profile", url: "/alumni/profile", icon: User },
 ];
 
-const STUDENT = USERS.find(u => u.id === "u4")!;
-const ALUMNI = USERS.find(u => u.id === "u1")!;
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ACCEPTED_FORMATS = ["image/jpeg", "image/jpg", "image/png"];
@@ -81,8 +79,8 @@ type PostMetadata = {
 export default function CreatePost() {
   const navigate = useNavigate();
   const location = useLocation();
-  const isAlumni = location.pathname.startsWith("/alumni");
-  const currentUser = isAlumni ? ALUMNI : STUDENT;
+  const { currentUser, loading } = useAuth();
+  const isAlumni = currentUser?.role === "alumni";
   const NAV = isAlumni ? ALUMNI_NAV : STUDENT_NAV;
   const postTypes = isAlumni ? ALUMNI_POST_TYPES : STUDENT_POST_TYPES;
 
@@ -129,6 +127,11 @@ export default function CreatePost() {
   };
 
   const handlePublish = async () => {
+    if (!currentUser) {
+      toast.error("Please sign in to publish a post.");
+      return;
+    }
+
     if (!postType || !title.trim() || !description.trim() || !company.trim() || !domain.trim()) {
       toast.error("Please fill all required fields.");
       return;
@@ -177,6 +180,10 @@ export default function CreatePost() {
       toast.error(error instanceof Error ? error.message : "Failed to create post");
     }
   };
+
+  if (loading || !currentUser) {
+    return null;
+  }
 
   return (
     <DashboardLayout

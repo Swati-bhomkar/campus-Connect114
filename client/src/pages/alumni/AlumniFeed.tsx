@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PostCard } from "@/components/PostCard";
-import { USERS, POSTS, type Post } from "@/lib/mock-data";
 import { getFeedPosts } from "@/lib/api";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Settings } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
+import type { Post } from "@/lib/mock-data";
 
-const ALUMNI = USERS.find(u => u.id === "u1")!;
 const NAV = [
   { title: "Overview", url: "/alumni", icon: LayoutDashboard },
   { title: "Discovery", url: "/alumni/discovery", icon: Search },
@@ -20,6 +20,7 @@ const NAV = [
 ];
 
 export default function AlumniFeed() {
+  const { currentUser, loading: authLoading } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,8 +45,12 @@ export default function AlumniFeed() {
     toast.success("Post deleted successfully");
   };
 
+  if (authLoading || !currentUser) {
+    return null;
+  }
+
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Alumni" userName={ALUMNI.name} userRole="Alumni" userAvatar={ALUMNI.avatar} currentUser={ALUMNI}>
+    <DashboardLayout navItems={NAV} groupLabel="Alumni" userName={currentUser.name} userRole="Alumni" userAvatar={currentUser.avatar} currentUser={currentUser}>
       <h2 className="text-xl font-bold text-foreground mb-1">Network Feed</h2>
       <p className="text-sm text-muted-foreground mb-6">Posts from you and your connected alumni</p>
 
@@ -61,7 +66,7 @@ export default function AlumniFeed() {
         </div>
       ) : (
         <div className="max-w-2xl space-y-4">
-          {posts.map(p => <PostCard key={p.id} post={p} currentUserId={ALUMNI.id} onDelete={handleDelete} />)}
+          {posts.map(p => <PostCard key={p.id} post={p} currentUserId={currentUser.id} onDelete={handleDelete} />)}
         </div>
       )}
     </DashboardLayout>

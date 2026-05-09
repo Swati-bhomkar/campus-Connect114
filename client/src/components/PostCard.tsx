@@ -276,7 +276,10 @@ const author = {
             )}
             {post.type === "referral_opportunity" && (
               <button
-                onClick={() => toast.success("Request feature coming soon")}
+                onClick={() => {
+                  // Navigate to create referral request page with postId as route param
+                  window.location.href = `/student/create-referral-request/${post.id}`;
+                }}
                 className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
               >
                 <Send className="h-3 w-3" /> Send Request

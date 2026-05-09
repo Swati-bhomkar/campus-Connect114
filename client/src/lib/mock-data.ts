@@ -37,16 +37,22 @@ export interface Connection {
 
 export interface ReferralRequest {
   id: string;
-  fromUserId: string;
-  toUserId: string;
-  status: ReferralStatus;
+  requesterId: string;
+  requesterRole: UserRole;
+  alumniId: string;
+  referralPostId: string;
+  companySnapshot: string;
+  roleSnapshot: string;
+  motivation?: string;
+  linkedinUrl?: string;
   resumeUrl: string;
-  jobId: string;
-  jobRole: string;
-  company: string;
-  skillsMatchScore: number;
+  status: ReferralStatus;
+  statusUpdatedAt: string;
   createdAt: string;
-  respondedAt?: string;
+}
+
+export interface PostMetadata {
+  deadline?: string;
 }
 
 export interface Post {
@@ -62,6 +68,7 @@ export interface Post {
   jobLink?: string;
   imageUrl?: string;
   flagged?: boolean;
+  metadata?: PostMetadata;
 }
 
 export interface Notification {
@@ -198,12 +205,12 @@ export const CONNECTIONS: Connection[] = [
 ];
 
 export const REFERRAL_REQUESTS: ReferralRequest[] = [
-  { id: "r1", fromUserId: "u4", toUserId: "u1", status: "accepted", resumeUrl: "/resumes/sneha_resume.pdf", jobId: "GOO-SWE-2025", jobRole: "Software Engineer L3", company: "Google", skillsMatchScore: 82, createdAt: "2025-01-15", respondedAt: "2025-01-18" },
-  { id: "r2", fromUserId: "u5", toUserId: "u10", status: "pending", resumeUrl: "/resumes/karan_resume.pdf", jobId: "UBR-BE-2025", jobRole: "Backend Engineer", company: "Uber", skillsMatchScore: 74, createdAt: "2025-03-10" },
-  { id: "r3", fromUserId: "u9", toUserId: "u1", status: "rejected", resumeUrl: "/resumes/aditya_resume.pdf", jobId: "GOO-SEC-2025", jobRole: "Security Engineer", company: "Google", skillsMatchScore: 58, createdAt: "2025-02-05", respondedAt: "2025-02-08" },
-  { id: "r4", fromUserId: "u4", toUserId: "u2", status: "pending", resumeUrl: "/resumes/sneha_resume_v2.pdf", jobId: "MSF-DS-2025", jobRole: "Data Scientist", company: "Microsoft", skillsMatchScore: 45, createdAt: "2025-03-12" },
-  { id: "r5", fromUserId: "u13", toUserId: "u6", status: "expired", resumeUrl: "/resumes/saurabh_resume.pdf", jobId: "FLK-DO-2025", jobRole: "DevOps Engineer", company: "Flipkart", skillsMatchScore: 71, createdAt: "2025-01-25" },
-  { id: "r6", fromUserId: "u7", toUserId: "u2", status: "pending", resumeUrl: "/resumes/vikram_resume.pdf", jobId: "MSF-ML-2025", jobRole: "ML Engineer", company: "Microsoft", skillsMatchScore: 67, createdAt: "2025-03-19" },
+  { id: "r1", requesterId: "u4", requesterRole: "student", alumniId: "u1", referralPostId: "p9", companySnapshot: "Google", roleSnapshot: "Referrals for Google SDE Roles", motivation: "I have strong DSA skills and system design knowledge.", linkedinUrl: "https://linkedin.com/in/sneha-iyer", resumeUrl: "/resumes/sneha_resume.pdf", status: "accepted", statusUpdatedAt: "2025-01-18T10:00:00Z", createdAt: "2025-01-15T14:30:00Z" },
+  { id: "r2", requesterId: "u5", requesterRole: "student", alumniId: "u10", referralPostId: "p5", companySnapshot: "Uber", roleSnapshot: "Backend Engineers Needed at Uber", motivation: "Experienced in MERN stack and REST APIs.", linkedinUrl: "https://linkedin.com/in/karan-patel", resumeUrl: "/resumes/karan_resume.pdf", status: "pending", statusUpdatedAt: "2025-03-10T09:15:00Z", createdAt: "2025-03-10T09:15:00Z" },
+  { id: "r3", requesterId: "u9", requesterRole: "student", alumniId: "u1", referralPostId: "p9", companySnapshot: "Google", roleSnapshot: "Referrals for Google SDE Roles", motivation: "Passionate about cybersecurity and network security.", linkedinUrl: "https://linkedin.com/in/aditya-joshi", resumeUrl: "/resumes/aditya_resume.pdf", status: "rejected", statusUpdatedAt: "2025-02-08T16:45:00Z", createdAt: "2025-02-05T11:20:00Z" },
+  { id: "r4", requesterId: "u4", requesterRole: "student", alumniId: "u2", referralPostId: "p3", companySnapshot: "Microsoft", roleSnapshot: "DS/ML Roles at Microsoft IDC", motivation: "Strong background in Python and data analysis.", linkedinUrl: "https://linkedin.com/in/sneha-iyer", resumeUrl: "/resumes/sneha_resume_v2.pdf", status: "pending", statusUpdatedAt: "2025-03-12T13:30:00Z", createdAt: "2025-03-12T13:30:00Z" },
+  { id: "r5", requesterId: "u13", requesterRole: "student", alumniId: "u6", referralPostId: "p6", companySnapshot: "Flipkart", roleSnapshot: "DevOps Internships at Flipkart", motivation: "Certified in AWS and experienced with cloud technologies.", linkedinUrl: "https://linkedin.com/in/saurabh-tiwari", resumeUrl: "/resumes/saurabh_resume.pdf", status: "expired", statusUpdatedAt: "2025-01-25T08:00:00Z", createdAt: "2025-01-25T08:00:00Z" },
+  { id: "r6", requesterId: "u7", requesterRole: "student", alumniId: "u2", referralPostId: "p3", companySnapshot: "Microsoft", roleSnapshot: "DS/ML Roles at Microsoft IDC", motivation: "Working on ML projects and research.", linkedinUrl: "https://linkedin.com/in/vikram-singh", resumeUrl: "/resumes/vikram_resume.pdf", status: "pending", statusUpdatedAt: "2025-03-19T15:45:00Z", createdAt: "2025-03-19T15:45:00Z" },
 ];
 
 export const POSTS: Post[] = [
@@ -232,7 +239,7 @@ export const getUsersByRole = (role: UserRole) => USERS.filter(u => u.role === r
 export const getConnectionsForUser = (userId: string) =>
   CONNECTIONS.filter(c => c.fromUserId === userId || c.toUserId === userId);
 export const getReferralRequestsForUser = (userId: string, direction: "sent" | "received") =>
-  REFERRAL_REQUESTS.filter(r => direction === "sent" ? r.fromUserId === userId : r.toUserId === userId);
+  REFERRAL_REQUESTS.filter(r => direction === "sent" ? r.requesterId === userId : r.alumniId === userId);
 export const getPostsByAuthor = (authorId: string) => POSTS.filter(p => p.authorId === authorId);
 export const getNotificationsForUser = (userId: string) => NOTIFICATIONS.filter(n => n.userId === userId);
 

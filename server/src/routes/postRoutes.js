@@ -1,5 +1,5 @@
 import express from "express";
-import { createPost, getMyPosts, getFeedPosts } from "../controllers/postController.js";
+import { createPost, getMyPosts, getFeedPosts, getPostById } from "../controllers/postController.js";
 import { authenticateToken } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -15,5 +15,8 @@ router.get("/me", getMyPosts);
 
 // GET /api/posts/feed - Get network feed posts
 router.get("/feed", getFeedPosts);
+
+// GET /api/posts/:id - Get a single post by ID
+router.get("/:id", getPostById);
 
 export default router;
