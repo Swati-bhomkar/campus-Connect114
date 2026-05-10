@@ -181,7 +181,7 @@ export const createReferralRequest = async (req, res) => {
 export const getSentRequests = async (req, res) => {
   try {
     const requests = await ReferralRequest.find({ requesterId: req.user._id })
-      .populate("requesterId", "name email avatar role registrationNumber")
+      .populate("requesterId", "name email avatar role company registrationNumber")
       .populate("alumniId", "name email avatar role company")
       .populate("referralPostId", "title company")
       .sort({ createdAt: -1 })
@@ -206,7 +206,7 @@ export const getSentRequests = async (req, res) => {
 export const getReceivedRequests = async (req, res) => {
   try {
     const requests = await ReferralRequest.find({ alumniId: req.user._id })
-      .populate("requesterId", "name email avatar role registrationNumber")
+      .populate("requesterId", "name email avatar role company registrationNumber")
       .populate("alumniId", "name email avatar role company")
       .populate("referralPostId", "title company")
       .sort({ createdAt: -1 })
@@ -262,7 +262,7 @@ export const updateRequestStatus = async (req, res) => {
     await request.save();
 
     const populatedRequest = await ReferralRequest.findById(request._id)
-      .populate("requesterId", "name email avatar role registrationNumber")
+      .populate("requesterId", "name email avatar role company registrationNumber")
       .populate("alumniId", "name email avatar role company")
       .populate("referralPostId", "title company")
       .lean();

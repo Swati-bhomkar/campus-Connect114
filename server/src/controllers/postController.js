@@ -32,6 +32,7 @@ export const createPost = async (req, res) => {
     // Add lightweight author fields
     postResponse.authorName = req.user.name;
     postResponse.authorAvatar = req.user.avatar || "";
+    postResponse.authorCompany = req.user.company || "";
 
     res.status(201).json({
       success: true,
@@ -75,6 +76,7 @@ export const getMyPosts = async (req, res) => {
       metadata: post.metadata,
       authorName: req.user.name,
       authorAvatar: req.user.avatar || "",
+      authorCompany: req.user.company || "",
     }));
 
     res.status(200).json({
@@ -142,6 +144,7 @@ export const getFeedPosts = async (req, res) => {
       metadata: post.metadata,
       authorName: post.authorId.name,
       authorAvatar: post.authorId.avatar || "",
+      authorCompany: post.authorId.company || "",
     }));
 
     res.status(200).json({
@@ -217,6 +220,7 @@ export const getPostById = async (req, res) => {
       metadata: post.metadata,
       authorName: post.authorId.name,
       authorAvatar: post.authorId.avatar || "",
+      authorCompany: post.authorId.company || "",
     };
 
     res.status(200).json({
