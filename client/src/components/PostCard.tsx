@@ -277,8 +277,8 @@ const author = {
             {post.type === "referral_opportunity" && (
               <button
                 onClick={() => {
-                  // Navigate to create referral request page with postId as route param
-                  window.location.href = `/student/create-referral-request/${post.id}`;
+                  const basePath = window.location.pathname.startsWith("/alumni") ? "/alumni" : "/student";
+                  window.location.href = `${basePath}/create-referral-request/${post.id}`;
                 }}
                 className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
               >

@@ -73,6 +73,7 @@ const App = () => (
           <Route path="/alumni/posts" element={<AlumniPosts />} />
           <Route path="/alumni/feed" element={<AlumniFeed />} />
           <Route path="/alumni/create-post" element={<CreatePost />} />
+          <Route path="/alumni/create-referral-request/:postId" element={<CreateReferralRequest />} />
           <Route path="/alumni/settings" element={<AlumniSettings />} />
           <Route path="/alumni/profile" element={<AlumniProfile />} />
 

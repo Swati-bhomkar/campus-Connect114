@@ -1,10 +1,12 @@
+import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ReferralRequestCard } from "@/components/ReferralRequestCard";
 import { Button } from "@/components/ui/button";
-import { getReferralRequestsForUser } from "@/lib/mock-data";
-import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User } from "lucide-react";
+import { getSentReferralRequests } from "@/lib/api";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 const NAV = [
   { title: "Overview", url: "/student", icon: LayoutDashboard },
@@ -18,10 +20,30 @@ const NAV = [
 
 export default function StudentReferrals() {
   const navigate = useNavigate();
-  const { currentUser, loading } = useAuth();
-  const referrals = currentUser ? getReferralRequestsForUser(currentUser.id, "sent") : [];
+  const { currentUser, loading: authLoading } = useAuth();
+  const [referrals, setReferrals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (loading || !currentUser) {
+  useEffect(() => {
+    if (authLoading || !currentUser) return;
+
+    const fetchReferrals = async () => {
+      try {
+        setLoading(true);
+        const requests = await getSentReferralRequests();
+        setReferrals(requests);
+      } catch (error) {
+        console.error("Failed to fetch sent referral requests:", error);
+        toast.error("Failed to load referral requests");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReferrals();
+  }, [authLoading, currentUser]);
+
+  if (authLoading || !currentUser) {
     return null;
   }
 
@@ -32,18 +54,26 @@ export default function StudentReferrals() {
           <h2 className="text-xl font-bold text-foreground">My Referral Requests</h2>
           <p className="text-sm text-muted-foreground">{referrals.length} request{referrals.length !== 1 ? "s" : ""} sent</p>
         </div>
-        <Button onClick={() => navigate("/student/create-referral")}>
+        <Button onClick={() => navigate("/student/posts")}>
           <PlusCircle className="h-4 w-4 mr-1.5" /> New Request
         </Button>
       </div>
 
       <div className="space-y-3">
-        {referrals.map(r => (
-          <ReferralRequestCard key={r.id} request={r} perspective="sender" />
-        ))}
-        {referrals.length === 0 && (
+        {loading ? (
           <div className="rounded-lg border bg-card p-8 text-center">
-            <p className="text-sm text-muted-foreground">No referral requests yet.</p>
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading referral requests...
+            </div>
+          </div>
+        ) : referrals.length > 0 ? (
+          referrals.map(request => (
+            <ReferralRequestCard key={request.id || request._id} request={request} perspective="sender" />
+          ))
+        ) : (
+          <div className="rounded-lg border bg-card p-8 text-center">
+            <p className="text-sm text-muted-foreground">No sent requests yet.</p>
           </div>
         )}
       </div>

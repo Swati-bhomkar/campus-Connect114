@@ -18,9 +18,19 @@ router.post(
   "/",
   [
     body("referralPostId").isMongoId().withMessage("Invalid post ID"),
-    body("resumeUrl").isURL().withMessage("Invalid resume URL"),
+    body("resumeUrl")
+      .isString()
+      .withMessage("Resume URL is required")
+      .bail()
+      .custom((value) => {
+        const isPdf = value.toLowerCase().endsWith(".pdf");
+        const isAbsoluteUrl = /^https?:\/\//i.test(value);
+        const isRelativePath = value.startsWith("/");
+        return isPdf && (isAbsoluteUrl || isRelativePath);
+      })
+      .withMessage("Resume must be a PDF URL or local path"),
     body("motivation").optional().isLength({ max: 250 }).withMessage("Motivation too long"),
-    body("linkedinUrl").optional().isURL().withMessage("Invalid LinkedIn URL"),
+    body("linkedinUrl").optional({ checkFalsy: true }).isURL().withMessage("Invalid LinkedIn URL"),
   ],
   createReferralRequest
 );

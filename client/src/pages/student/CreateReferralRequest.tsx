@@ -5,13 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Upload, Calendar, Clock, Loader2 } from "lucide-react";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Upload, Calendar, Loader2, Settings } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { getPostById, createReferralRequest } from "@/lib/api";
 
-const NAV = [
+const STUDENT_NAV = [
   { title: "Overview", url: "/student", icon: LayoutDashboard },
   { title: "Discovery", url: "/student/discovery", icon: Search },
   { title: "Connections", url: "/student/connections", icon: Users },
@@ -19,6 +19,17 @@ const NAV = [
   { title: "Posts", url: "/student/posts", icon: Newspaper },
   { title: "Create Post", url: "/student/create-post", icon: PlusCircle },
   { title: "My Profile", url: "/student/profile", icon: User },
+];
+
+const ALUMNI_NAV = [
+  { title: "Overview", url: "/alumni", icon: LayoutDashboard },
+  { title: "Discovery", url: "/alumni/discovery", icon: Search },
+  { title: "Incoming Requests", url: "/alumni/requests", icon: FileText },
+  { title: "Connections", url: "/alumni/connections", icon: Users },
+  { title: "My Posts", url: "/alumni/posts", icon: Newspaper },
+  { title: "Create Post", url: "/alumni/create-post", icon: PlusCircle },
+  { title: "Referral Settings", url: "/alumni/settings", icon: Settings },
+  { title: "My Profile", url: "/alumni/profile", icon: User },
 ];
 
 export default function CreateReferralRequest() {
@@ -34,6 +45,11 @@ export default function CreateReferralRequest() {
   const [post, setPost] = useState<any>(null);
   const [postLoading, setPostLoading] = useState(true);
   const [postError, setPostError] = useState<string | null>(null);
+  const isAlumni = currentUser?.role === "alumni";
+  const navItems = isAlumni ? ALUMNI_NAV : STUDENT_NAV;
+  const roleLabel = isAlumni ? "Alumni" : "Student";
+  const referralsPath = isAlumni ? "/alumni/requests" : "/student/referrals";
+  const discoveryPath = isAlumni ? "/alumni/discovery" : "/student/discovery";
 
   // Fetch post data
   useEffect(() => {
@@ -81,9 +97,9 @@ export default function CreateReferralRequest() {
   useEffect(() => {
     if (!postLoading && postError) {
       toast.error(postError);
-      navigate("/student/discovery");
+      navigate(discoveryPath);
     }
-  }, [postLoading, postError, navigate]);
+  }, [postLoading, postError, navigate, discoveryPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,16 +127,21 @@ export default function CreateReferralRequest() {
     setIsSubmitting(true);
 
     try {
-      // Mock API call - in real implementation, this would upload file and create request
-      const resumeUrl = `/resumes/${currentUser.id}_${Date.now()}.pdf`; // Mock URL
+      const userId = currentUser.id || (currentUser as any)._id;
+      const resumeUrl = `/resumes/${userId}_${Date.now()}.pdf`;
+      const payload = {
+        referralPostId: postId!,
+        motivation: motivation.trim(),
+        resumeUrl,
+        ...(linkedinUrl.trim() ? { linkedinUrl: linkedinUrl.trim() } : {}),
+      };
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await createReferralRequest(payload);
 
       toast.success("Referral request submitted successfully!");
-      navigate("/student/referrals");
+      navigate(referralsPath);
     } catch (error) {
-      toast.error("Failed to submit referral request");
+      toast.error(error instanceof Error ? error.message : "Failed to submit referral request");
     } finally {
       setIsSubmitting(false);
     }
@@ -136,7 +157,7 @@ export default function CreateReferralRequest() {
   // Show loading while auth or post is loading
   if (authLoading || postLoading) {
     return (
-      <DashboardLayout navItems={NAV} groupLabel="Student" userName="" userRole="Student" userAvatar="" currentUser={null}>
+      <DashboardLayout navItems={navItems} groupLabel={roleLabel} userName="" userRole={roleLabel} userAvatar="" currentUser={null}>
         <div className="max-w-2xl mx-auto flex items-center justify-center min-h-[400px]">
           <div className="flex items-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin" />
@@ -156,7 +177,7 @@ export default function CreateReferralRequest() {
   const deadline = post?.metadata?.deadline ? new Date(post.metadata.deadline) : null;
 
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>
+    <DashboardLayout navItems={navItems} groupLabel={roleLabel} userName={currentUser.name} userRole={roleLabel} userAvatar={currentUser.avatar} currentUser={currentUser}>
       <div className="max-w-2xl mx-auto">
         <h2 className="text-xl font-bold text-foreground mb-1">New Referral Request</h2>
         <p className="text-sm text-muted-foreground mb-6">Submit a structured referral request to an alumni</p>
@@ -258,7 +279,7 @@ export default function CreateReferralRequest() {
 
                 {/* Submit Button */}
                 <div className="flex gap-3 pt-2">
-                  <Button variant="outline" onClick={() => navigate("/student/referrals")} disabled={isSubmitting}>
+                  <Button type="button" variant="outline" onClick={() => navigate(referralsPath)} disabled={isSubmitting}>
                     Cancel
                   </Button>
                   <Button type="submit" className="flex-1" disabled={isSubmitting}>

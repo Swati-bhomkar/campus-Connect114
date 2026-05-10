@@ -1,0 +1,1025 @@
+import express from "express";
+import { body } from "express-validator";
+import {
+  createReferralRequest,
+  getSentRequests,
+  getReceivedRequests,
+  updateRequestStatus,
+} from "../controllers/referralController.js";
+import { authenticateToken } from "../middleware/auth.js";
+
+const router = express.Router();
+
+// All routes require authentication
+router.use(authenticateToken);
+
+// POST /api/referrals - Create a new referral request
+router.post(
+  "/",
+  [
+    body("referralPostId").isMongoId().withMessage("Invalid post ID"),
+    body("resumeUrl")
+      .isString()
+      .withMessage("Resume URL is required")
+      .bail()
+      .custom((value) => {
+        const isPdf = value.toLowerCase().endsWith(".pdf");
+        const isAbsoluteUrl = /^https?:\/\//i.test(value);
+        const isRelativePath = value.startsWith("/");
+        return isPdf && (isAbsoluteUrl || isRelativePath);
+      })
+      .withMessage("Resume must be a PDF URL or local path"),
+    body("motivation").optional().isLength({ max: 250 }).withMessage("Motivation too long"),
+    body("linkedinUrl").optional({ checkFalsy: true }).isURL().withMessage("Invalid LinkedIn URL"),
+  ],
+  createReferralRequest
+);
+
+// GET /api/referrals/sent - Get requests sent by current user
+router.get("/sent", getSentRequests);
+
+// GET /api/referrals/received - Get requests received by current alumni
+router.get("/received", getReceivedRequests);
+
+// PATCH /api/referrals/:id/status - Update request status
+router.patch("/:id/status", updateRequestStatus);
+
+export default router;
+referralrouter----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+import ReferralRequest from "../models/ReferralRequest.js";
+import Post from "../models/Post.js";
+import User from "../models/User.js";
+import { validationResult } from "express-validator";
+
+/**
+ * Create a new referral request
+ */
+export const createReferralRequest = async (req, res) => {
+  try {
+    console.log("[referrals:create] controller entered");
+    console.log("[referrals:create] payload received:", req.body);
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.warn("[referrals:create] validation errors:", errors.array());
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array(),
+      });
+    }
+
+    const { referralPostId, motivation, linkedinUrl, resumeUrl } = req.body;
+    const requesterId = req.user._id;
+    const requesterRole = req.user.role;
+
+    // Validate referral post exists and is referral type
+    const post = await Post.findById(referralPostId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Referral post not found",
+      });
+    }
+
+    if (post.type !== "referral_opportunity") {
+      return res.status(400).json({
+        success: false,
+        message: "Post is not a referral opportunity",
+      });
+    }
+
+    // Validate alumni exists
+    const alumni = await User.findById(post.authorId);
+    if (!alumni) {
+      return res.status(404).json({
+        success: false,
+        message: "Alumni not found",
+      });
+    }
+
+    // Prevent self-requests
+    if (requesterId.toString() === alumni._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot request referral from yourself",
+      });
+    }
+
+    // Check for duplicate request (handled by unique index, but check explicitly)
+    const existingRequest = await ReferralRequest.findOne({
+      requesterId,
+      referralPostId,
+    });
+
+    if (existingRequest) {
+      return res.status(409).json({
+        success: false,
+        message: "You have already sent a referral request for this post",
+      });
+    }
+
+    // Validate resume (basic check - assume URL is provided)
+    if (!resumeUrl || !resumeUrl.endsWith('.pdf')) {
+      return res.status(400).json({
+        success: false,
+        message: "Resume must be a PDF file",
+      });
+    }
+
+    // Create request
+    const referralRequest = new ReferralRequest({
+      requesterId,
+      requesterRole,
+      alumniId: alumni._id,
+      referralPostId,
+      companySnapshot: post.company,
+      roleSnapshot: post.title, // Using title as role snapshot
+      motivation: motivation || "",
+      linkedinUrl: linkedinUrl || "",
+      resumeUrl,
+    });
+
+    try {
+      await referralRequest.save();
+      console.log("[referrals:create] save success:", referralRequest._id.toString());
+    } catch (saveError) {
+      console.error("[referrals:create] save failure:", saveError);
+      throw saveError;
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Referral request submitted successfully",
+      data: referralRequest,
+    });
+  } catch (error) {
+    console.error("Create referral request error:", error);
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "You have already sent a referral request for this post",
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+/**
+ * Get referral requests sent by current user
+ */
+export const getSentRequests = async (req, res) => {
+  try {
+    const requests = await ReferralRequest.find({ requesterId: req.user._id })
+      .populate("alumniId", "name email avatar company")
+      .populate("referralPostId", "title company")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: requests,
+    });
+  } catch (error) {
+    console.error("Get sent requests error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+/**
+ * Get referral requests received by current alumni
+ */
+export const getReceivedRequests = async (req, res) => {
+  try {
+    const requests = await ReferralRequest.find({ alumniId: req.user._id })
+      .populate("requesterId", "name email avatar registrationNumber")
+      .populate("referralPostId", "title company")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: requests,
+    });
+  } catch (error) {
+    console.error("Get received requests error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+/**
+ * Update referral request status (accept/reject)
+ */
+export const updateRequestStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["accepted", "rejected"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status",
+      });
+    }
+
+    const request = await ReferralRequest.findById(id);
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: "Referral request not found",
+      });
+    }
+
+    // Only alumni can update status
+    if (request.alumniId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized to update this request",
+      });
+    }
+
+    request.status = status;
+    request.statusUpdatedAt = new Date();
+    await request.save();
+
+    res.json({
+      success: true,
+      message: `Request ${status}`,
+      data: request,
+    });
+  } catch (error) {
+    console.error("Update request status error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+referral controller----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// API Base URL configuration
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+/**
+ * Get authorization headers with JWT token
+ */
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("token");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+
+/**
+ * Get current user profile
+ */
+export const getCurrentUser = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/me`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get user data");
+  }
+
+  // Normalize API response: map collegEmail to email
+  const user = {
+    ...data.user,
+    email: data.user.collegEmail,
+  };
+
+  return user;
+};
+
+/**
+ * Get all users for admin
+ */
+export const getAllUsers = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/users`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to fetch users");
+  }
+
+  return data.users.map((user: any) => ({
+    ...user,
+    id: user._id,
+  }));
+};
+
+/**
+ * Search users with filters
+ */
+export const searchUsers = async (filters: {
+  search?: string;
+  role?: string;
+  domain?: string;
+  company?: string;
+  passOutYear?: string;
+  availableOnly?: boolean;
+}) => {
+  const params = new URLSearchParams();
+  
+  if (filters.search) params.append("search", filters.search);
+  if (filters.role && filters.role !== "all") params.append("role", filters.role);
+  if (filters.domain && filters.domain !== "all") params.append("domain", filters.domain);
+  if (filters.company && filters.company !== "all") params.append("company", filters.company);
+  if (filters.passOutYear && filters.passOutYear !== "all") params.append("passOutYear", filters.passOutYear);
+  if (filters.availableOnly) params.append("availableOnly", "true");
+
+  const response = await fetch(`${API_BASE_URL}/api/users/search?${params}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to search users");
+  }
+
+  return data.users;
+};
+
+/**
+ * Get user by ID
+ */
+export const getUserById = async (id: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get user");
+  }
+
+  return data.user;
+};
+
+/**
+ * Update current user profile
+ */
+export const updateCurrentUser = async (userData: {
+  name?: string;
+  bio?: string;
+  skills?: string[];
+  avatar?: string;
+}) => {
+  const response = await fetch(`${API_BASE_URL}/api/me`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(userData),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to update profile");
+  }
+
+  return data.user;
+};
+
+/**
+ * Send connection request
+ */
+export const sendConnectionRequest = async (toUserId: string, purpose: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ toUserId, purpose }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to send connection request");
+  }
+
+  return data;
+};
+
+/**
+ * Get accepted connections for current user
+ */
+export const getConnections = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/connections`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get connections");
+  }
+
+  return data.connections;
+};
+
+/**
+ * Get connection count for current user
+ */
+export const getConnectionCount = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/count`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get connection count");
+  }
+
+  return data.count;
+};
+
+/**
+ * Get connection status with another user
+ */
+export const getConnectionStatus = async (userId: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/status/${userId}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get connection status");
+  }
+
+  return data;
+};
+
+/**
+ * Get unread notification count
+ */
+export const getUnreadNotificationCount = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/notifications/unread-count`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get unread count");
+  }
+
+  return data;
+};
+
+/**
+ * Cancel connection request
+ */
+export const cancelConnectionRequest = async (userId: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/${userId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to cancel connection request");
+  }
+
+  return data;
+};
+
+/**
+ * Get notifications for current user
+ */
+export const getNotifications = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/notifications`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to get notifications");
+  }
+
+  return data.notifications;
+};
+
+/**
+ * Mark all notifications as read
+ */
+export const markAllNotificationsRead = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/notifications/read-all`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to mark notifications as read");
+  }
+
+  return data;
+};
+
+/**
+ * Accept a connection request
+ */
+export const acceptConnection = async (connectionId: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/${connectionId}/accept`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to accept connection");
+  }
+
+  return data;
+};
+
+/**
+ * Reject a connection request
+ */
+export const rejectConnection = async (connectionId: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/connections/${connectionId}/reject`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to reject connection");
+  }
+
+  return data;
+};
+
+/**
+ * Create a new post
+ */
+export const createPost = async (postData: {
+  type: string;
+  title: string;
+  description: string;
+  company: string;
+  domain: string;
+  metadata: object;
+  imageUrl?: string;
+}) => {
+  const response = await fetch(`${API_BASE_URL}/api/posts`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(postData),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to create post");
+  }
+
+  return data.post;
+};
+
+/**
+ * Get current user's posts
+ */
+export const getMyPosts = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/posts/me`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to fetch posts");
+  }
+
+  return data.posts;
+};
+
+/**
+ * Get network feed posts
+ */
+export const getFeedPosts = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/posts/feed`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to fetch feed posts");
+  }
+
+  return data.posts;
+};
+
+/**
+ * Get a single post by ID
+ */
+export const getPostById = async (id: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/posts/${id}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to fetch post");
+  }
+
+  return data.post;
+};
+
+/**
+ * Create a referral request
+ */
+export const createReferralRequest = async (requestData: {
+  referralPostId: string;
+  motivation?: string;
+  linkedinUrl?: string;
+  resumeUrl: string;
+}) => {
+  const response = await fetch(`${API_BASE_URL}/api/referrals`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(requestData),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const validationMessage = data.errors?.map((error: any) => error.msg).join(", ");
+    throw new Error(validationMessage || data.message || "Failed to create referral request");
+  }
+
+  return data.data;
+};
+
+/**
+ * Get sent referral requests
+ */
+export const getSentReferralRequests = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/referrals/sent`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to fetch sent requests");
+  }
+
+  return data.data;
+};
+
+/**
+ * Get received referral requests
+ */
+export const getReceivedReferralRequests = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/referrals/received`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to fetch received requests");
+  }
+
+  return data.data;
+};
+
+/**
+ * Update referral request status
+ */
+export const updateReferralRequestStatus = async (requestId: string, status: "accepted" | "rejected") => {
+  const response = await fetch(`${API_BASE_URL}/api/referrals/${requestId}/status`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to update request status");
+  }
+
+  return data.data;
+};
+api------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+import { useState, useEffect } from "react";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Upload, Calendar, Clock, Loader2 } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
+import { getPostById, createReferralRequest } from "@/lib/api";
+
+const NAV = [
+  { title: "Overview", url: "/student", icon: LayoutDashboard },
+  { title: "Discovery", url: "/student/discovery", icon: Search },
+  { title: "Connections", url: "/student/connections", icon: Users },
+  { title: "My Referrals", url: "/student/referrals", icon: FileText },
+  { title: "Posts", url: "/student/posts", icon: Newspaper },
+  { title: "Create Post", url: "/student/create-post", icon: PlusCircle },
+  { title: "My Profile", url: "/student/profile", icon: User },
+];
+
+export default function CreateReferralRequest() {
+  const navigate = useNavigate();
+  const { postId } = useParams<{ postId: string }>();
+  const [motivation, setMotivation] = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { currentUser, loading: authLoading } = useAuth();
+
+  // Post fetching state
+  const [post, setPost] = useState<any>(null);
+  const [postLoading, setPostLoading] = useState(true);
+  const [postError, setPostError] = useState<string | null>(null);
+
+  // Fetch post data
+  useEffect(() => {
+    if (!postId) {
+      setPostError("Invalid post ID");
+      setPostLoading(false);
+      return;
+    }
+
+    const fetchPost = async () => {
+      try {
+        setPostLoading(true);
+        setPostError(null);
+        const fetchedPost = await getPostById(postId);
+        setPost(fetchedPost);
+      } catch (error) {
+        console.error("Failed to fetch post:", error);
+        setPostError("Failed to load referral post");
+      } finally {
+        setPostLoading(false);
+      }
+    };
+
+    fetchPost();
+  }, [postId]);
+
+  // Validate post after loading
+  useEffect(() => {
+    if (!postLoading && post) {
+      if (post.type !== "referral_opportunity") {
+        setPostError("Invalid referral request");
+        return;
+      }
+    }
+  }, [postLoading, post]);
+
+  // Redirect if auth not ready
+  useEffect(() => {
+    if (!authLoading && !currentUser) {
+      navigate("/login");
+    }
+  }, [authLoading, currentUser, navigate]);
+
+  // Redirect on error after loading is complete
+  useEffect(() => {
+    if (!postLoading && postError) {
+      toast.error(postError);
+      navigate("/student/discovery");
+    }
+  }, [postLoading, postError, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!resumeFile) {
+      toast.error("Please upload your resume");
+      return;
+    }
+
+    if (resumeFile.size > 5 * 1024 * 1024) { // 5MB
+      toast.error("Resume file size must be less than 5MB");
+      return;
+    }
+
+    if (!resumeFile.name.endsWith('.pdf')) {
+      toast.error("Resume must be a PDF file");
+      return;
+    }
+
+    if (!currentUser) {
+      toast.error("Please sign in to submit referral requests");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const userId = currentUser.id || (currentUser as any)._id;
+      const resumeUrl = `/resumes/${userId}_${Date.now()}.pdf`;
+      const payload = {
+        referralPostId: postId!,
+        motivation: motivation.trim(),
+        resumeUrl,
+        ...(linkedinUrl.trim() ? { linkedinUrl: linkedinUrl.trim() } : {}),
+      };
+
+      await createReferralRequest(payload);
+
+      toast.success("Referral request submitted successfully!");
+      navigate("/student/referrals");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to submit referral request");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setResumeFile(file);
+    }
+  };
+
+  // Show loading while auth or post is loading
+  if (authLoading || postLoading) {
+    return (
+      <DashboardLayout navItems={NAV} groupLabel="Student" userName="" userRole="Student" userAvatar="" currentUser={null}>
+        <div className="max-w-2xl mx-auto flex items-center justify-center min-h-[400px]">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <p className="text-muted-foreground">Loading referral post...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Don't render anything if there's an error (will redirect)
+  if (postError || !post || !currentUser) {
+    return null;
+  }
+
+  // Get deadline from post metadata if available
+  const deadline = post?.metadata?.deadline ? new Date(post.metadata.deadline) : null;
+
+  return (
+    <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>
+      <div className="max-w-2xl mx-auto">
+        <h2 className="text-xl font-bold text-foreground mb-1">New Referral Request</h2>
+        <p className="text-sm text-muted-foreground mb-6">Submit a structured referral request to an alumni</p>
+
+        <div className="space-y-6">
+          {/* Alumni Info Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Alumni Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-semibold text-primary">
+                  {post.authorAvatar || post.authorName.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground">{post.authorName}</h3>
+                  <p className="text-sm text-muted-foreground">{post.company} · {post.domain}</p>
+                  {deadline && (
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Deadline: {deadline.toLocaleDateString("en-IN")}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Request Form */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Request Details</CardTitle>
+              <CardDescription>All fields are required except motivation and LinkedIn URL</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Auto-filled Company */}
+                <div className="space-y-2">
+                  <Label>Company</Label>
+                  <Input value={post.company} readOnly className="bg-secondary/50" />
+                </div>
+
+                {/* Auto-filled Role */}
+                <div className="space-y-2">
+                  <Label>Role</Label>
+                  <Input value={post.title} readOnly className="bg-secondary/50" />
+                </div>
+
+                {/* Resume Upload */}
+                <div className="space-y-2">
+                  <Label>Upload Resume (PDF only, max 5MB)</Label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleFileChange}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <div className="rounded-lg border-2 border-dashed border-border p-6 text-center hover:border-primary/50 transition-colors">
+                      <Upload className="mx-auto h-6 w-6 text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        {resumeFile ? resumeFile.name : "Click to upload PDF resume"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">PDF only, max 5MB</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Motivation Textarea */}
+                <div className="space-y-2">
+                  <Label htmlFor="motivation">
+                    Why are you interested in this role? (Optional)
+                  </Label>
+                  <Textarea
+                    id="motivation"
+                    placeholder="Tell the alumni why you're interested in this role and what makes you a good fit..."
+                    value={motivation}
+                    onChange={(e) => setMotivation(e.target.value)}
+                    maxLength={250}
+                    rows={4}
+                  />
+                  <p className="text-xs text-muted-foreground text-right">
+                    {motivation.length}/250 characters
+                  </p>
+                </div>
+
+                {/* LinkedIn URL */}
+                <div className="space-y-2">
+                  <Label htmlFor="linkedin">LinkedIn Profile URL (Optional)</Label>
+                  <Input
+                    id="linkedin"
+                    type="url"
+                    placeholder="https://linkedin.com/in/your-profile"
+                    value={linkedinUrl}
+                    onChange={(e) => setLinkedinUrl(e.target.value)}
+                  />
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex gap-3 pt-2">
+                  <Button variant="outline" onClick={() => navigate("/student/referrals")} disabled={isSubmitting}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                    {isSubmitting ? "Submitting..." : "Submit Request"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
+createrferral.tsx------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

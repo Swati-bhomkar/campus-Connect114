@@ -12,6 +12,14 @@ const getAuthHeaders = () => {
   };
 };
 
+const normalizeReferralRequest = (request: any) => ({
+  ...request,
+  id: request.id || request._id,
+  requesterId: request.requesterId?.id || request.requesterId?._id || request.requesterId,
+  alumniId: request.alumniId?.id || request.alumniId?._id || request.alumniId,
+  referralPostId: request.referralPostId?.id || request.referralPostId?._id || request.referralPostId,
+});
+
 /**
  * Get current user profile
  */
@@ -413,10 +421,11 @@ export const createReferralRequest = async (requestData: {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.message || "Failed to create referral request");
+    const validationMessage = data.errors?.map((error: any) => error.msg).join(", ");
+    throw new Error(validationMessage || data.message || "Failed to create referral request");
   }
 
-  return data.data;
+  return normalizeReferralRequest(data.data);
 };
 
 /**
@@ -434,7 +443,7 @@ export const getSentReferralRequests = async () => {
     throw new Error(data.message || "Failed to fetch sent requests");
   }
 
-  return data.data;
+  return data.data.map(normalizeReferralRequest);
 };
 
 /**
@@ -452,7 +461,7 @@ export const getReceivedReferralRequests = async () => {
     throw new Error(data.message || "Failed to fetch received requests");
   }
 
-  return data.data;
+  return data.data.map(normalizeReferralRequest);
 };
 
 /**
@@ -471,5 +480,5 @@ export const updateReferralRequestStatus = async (requestId: string, status: "ac
     throw new Error(data.message || "Failed to update request status");
   }
 
-  return data.data;
+  return normalizeReferralRequest(data.data);
 };
