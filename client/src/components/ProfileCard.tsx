@@ -4,8 +4,7 @@ import { ReputationBadge, VerificationBadge, AvailabilityIndicator } from "@/com
 import type { User } from "@/lib/mock-data";
 import { UserPlus, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
-import { renderAvatar } from "@/lib/utils";
+import { cn, formatName, renderAvatar } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { getConnectionStatus, sendConnectionRequest, cancelConnectionRequest } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -15,14 +14,14 @@ interface ProfileCardProps {
   showActions?: boolean;
   compact?: boolean;
   className?: string;
-  onConnectionUpdate?: () => void;
 }
 
-export function ProfileCard({ user, showActions = true, compact = false, className, onConnectionUpdate }: ProfileCardProps) {
+export function ProfileCard({ user, showActions = true, compact = false, className }: ProfileCardProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [connectionStatus, setConnectionStatus] = useState<"none" | "pending" | "accepted">("none");
   const [isConnecting, setIsConnecting] = useState(false);
+  const displayName = formatName(user.name);
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -59,7 +58,6 @@ export function ProfileCard({ user, showActions = true, compact = false, classNa
           description: "The request has been cancelled.",
         });
       }
-      onConnectionUpdate?.();
     } catch (error) {
       toast({
         title: "Error",
@@ -88,10 +86,10 @@ export function ProfileCard({ user, showActions = true, compact = false, classNa
     <Card className={cn("transition-shadow hover:shadow-md", className)}>
       <CardContent className={compact ? "p-4" : "p-5"}>
         <div className="flex items-start gap-4">
-          {renderAvatar(user.avatar, user.name, "h-11 w-11")}
+          {renderAvatar(user.avatar, displayName, "h-11 w-11")}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-foreground truncate">{user.name}</span>
+              <span className="font-semibold text-foreground truncate">{displayName}</span>
               {user.role === "alumni" && <VerificationBadge status={user.companyVerified} />}
               <ReputationBadge score={user.reputationScore} />
             </div>

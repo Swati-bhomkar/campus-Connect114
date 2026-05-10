@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PostCard } from "@/components/PostCard";
 import { ReputationBadge } from "@/components/StatusBadges";
-import { POSTS, type Post, type User } from "@/lib/mock-data";
-import { getCurrentUser, updateCurrentUser, getConnectionCount } from "@/lib/api";
-import { renderAvatar } from "@/lib/utils";
-import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Pencil, Save, X } from "lucide-react";
+import { type User } from "@/lib/mock-data";
+import { getCurrentUser, updateCurrentUser as saveCurrentUser, getConnectionCount } from "@/lib/api";
+import { formatName, renderAvatar } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 
 const NAV = [
@@ -24,6 +24,7 @@ const NAV = [
 ];
 
 export default function StudentProfile() {
+  const { updateCurrentUser } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [connectionCount, setConnectionCount] = useState(0);
@@ -35,8 +36,6 @@ export default function StudentProfile() {
     avatar: "",
   });
   const [saving, setSaving] = useState(false);
-
-  const posts = POSTS.filter(p => p.authorId === user?.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -69,8 +68,12 @@ export default function StudentProfile() {
 
     setSaving(true);
     try {
-      const updatedUser = await updateCurrentUser(editData);
+      const updatedUser = await saveCurrentUser({
+        ...editData,
+        name: formatName(editData.name),
+      });
       setUser(updatedUser);
+      updateCurrentUser(updatedUser);
       setEditing(false);
       toast.success("Profile updated successfully");
     } catch (error) {
@@ -116,8 +119,11 @@ export default function StudentProfile() {
     );
   }
 
+  const displayName = formatName(user.name);
+  const displayUser = { ...user, name: displayName };
+
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Student" userName={user.name} userRole="Student" userAvatar={user.avatar} currentUser={user}>
+    <DashboardLayout navItems={NAV} groupLabel="Student" userName={displayName} userRole="Student" userAvatar={user.avatar} currentUser={displayUser}>
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-foreground">My Profile</h2>
@@ -164,7 +170,7 @@ export default function StudentProfile() {
                       className="text-lg font-bold"
                     />
                   ) : (
-                    <h3 className="text-lg font-bold text-foreground">{user.name}</h3>
+                    <h3 className="text-lg font-bold text-foreground">{displayName}</h3>
                   )}
                   <ReputationBadge score={user.reputationScore} />
                 </div>
@@ -257,20 +263,6 @@ export default function StudentProfile() {
             </div>
           </CardContent>
         </Card>
-
-        {/* User's Posts */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4">My Posts</h3>
-          {posts.length === 0 ? (
-            <Card><CardContent className="p-6 text-center text-muted-foreground">You haven't created any posts yet.</CardContent></Card>
-          ) : (
-            <div className="space-y-4">
-              {posts.map(p => (
-                <PostCard key={p.id} post={p} currentUserId={user.id} onDelete={() => {}} />
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </DashboardLayout>
   );

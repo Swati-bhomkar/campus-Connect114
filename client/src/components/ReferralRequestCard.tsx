@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import type { ReferralRequest as MockReferralRequest } from "@/lib/mock-data";
 import { getUserById } from "@/lib/mock-data";
 import { FileText, Check, X, Clock, AlertTriangle, ExternalLink } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatName, renderAvatar } from "@/lib/utils";
 
 const statusConfig: Record<string, { label: string; cls: string; icon: typeof Check }> = {
   pending: { label: "Pending", cls: "text-amber-600 bg-amber-50", icon: Clock },
@@ -45,16 +45,6 @@ interface ReferralRequestCardProps {
   className?: string;
 }
 
-const initials = (name?: string) =>
-  name
-    ? name
-        .split(" ")
-        .map(word => word[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
-    : "";
-
 export function ReferralRequestCard({ request, perspective, onAccept, onReject, className }: ReferralRequestCardProps) {
   const requestId = request.id || request._id || "";
   const otherUser =
@@ -71,6 +61,7 @@ export function ReferralRequestCard({ request, perspective, onAccept, onReject, 
   const motivation = request.motivation?.trim();
   const matchScore = typeof request.skillsMatchScore === "number" ? request.skillsMatchScore : null;
   const requesterRole = request.requester?.role || request.requesterRole;
+  const otherUserName = formatName(otherUser?.name);
 
   return (
     <Card className={cn("transition-shadow hover:shadow-md", className)}>
@@ -78,12 +69,10 @@ export function ReferralRequestCard({ request, perspective, onAccept, onReject, 
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             {otherUser && (
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">
-                {otherUser.avatar || initials(otherUser.name)}
-              </div>
+              renderAvatar(otherUser.avatar || "", otherUserName, "h-9 w-9 text-xs")
             )}
             <div>
-              <span className="text-sm font-medium text-foreground">{otherUser?.name}</span>
+              <span className="text-sm font-medium text-foreground">{otherUserName}</span>
               <p className="text-xs text-muted-foreground">
                 {otherUser?.company && `${otherUser.company} - `}
                 {perspective === "receiver" && requesterRole ? `${requesterRole} - ` : ""}

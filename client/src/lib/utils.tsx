@@ -6,11 +6,25 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Generate initials from name
+ * Format a person name for display without mutating stored user data.
  */
-const getInitials = (name: string) => {
-  return name
-    .split(" ")
+export const formatName = (name?: string) => {
+  return (name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
+/**
+ * Generate initials from formatted first and last name.
+ */
+export const getInitials = (name?: string) => {
+  const parts = formatName(name).split(" ").filter(Boolean);
+  const initialsSource = parts.length > 1 ? [parts[0], parts[parts.length - 1]] : parts;
+
+  return initialsSource
     .map((word) => word[0])
     .join("")
     .toUpperCase()
@@ -21,11 +35,20 @@ const getInitials = (name: string) => {
  * Render avatar component - image or initials
  */
 export const renderAvatar = (avatar: string, name: string, className?: string) => {
-  if (avatar && (avatar.startsWith("http") || avatar.startsWith("blob:"))) {
+  const displayName = formatName(name);
+  const avatarValue = avatar?.trim();
+  const isImageAvatar =
+    avatarValue &&
+    (avatarValue.startsWith("http") ||
+      avatarValue.startsWith("blob:") ||
+      avatarValue.startsWith("data:") ||
+      avatarValue.startsWith("/"));
+
+  if (isImageAvatar) {
     return (
       <img
-        src={avatar}
-        alt={`${name}'s avatar`}
+        src={avatarValue}
+        alt={`${displayName || "User"}'s avatar`}
         className={cn("h-16 w-16 rounded-full object-cover", className)}
       />
     );
@@ -33,7 +56,7 @@ export const renderAvatar = (avatar: string, name: string, className?: string) =
 
   return (
     <div className={cn("flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xl font-bold", className)}>
-      {getInitials(name)}
+      {getInitials(displayName)}
     </div>
   );
 };

@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { getCurrentUser, getNotifications, markAllNotificationsRead, acceptConnection, rejectConnection } from "@/lib/api";
-import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Bell } from "lucide-react";
+import { getCurrentUser, getNotifications, markAllNotificationsRead, acceptConnection, rejectConnection, getUserById } from "@/lib/api";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Bell, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { cn, formatName, renderAvatar } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 import type { User } from "@/lib/mock-data";
 
 interface Notification {
@@ -16,6 +18,7 @@ interface Notification {
   read: boolean;
   createdAt: string;
   connectionId?: string;
+  linkTo?: string | null;
 }
 
 const NAV = [
@@ -37,10 +40,15 @@ const typeConfig: Record<string, { cls: string }> = {
 };
 
 export default function Notifications() {
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingActions, setProcessingActions] = useState<Set<string>>(new Set());
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [profileCache, setProfileCache] = useState<Record<string, User>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -74,6 +82,44 @@ export default function Notifications() {
   }, [toast]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const selectedProfile = selectedProfileId ? profileCache[selectedProfileId] : null;
+
+  const getSenderId = (notification: Notification) => {
+    const match = notification.linkTo?.match(/\/profile\/([^/]+)/);
+    return match?.[1] || null;
+  };
+
+  const handleViewProfile = async (notification: Notification) => {
+    const senderId = getSenderId(notification);
+
+    if (!senderId) {
+      toast({
+        title: "Profile unavailable",
+        description: "This notification does not include sender profile details.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedProfileId(senderId);
+    setProfileDialogOpen(true);
+
+    if (profileCache[senderId]) return;
+
+    setProfileLoading(true);
+    try {
+      const user = await getUserById(senderId);
+      setProfileCache(prev => ({ ...prev, [senderId]: user }));
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load profile preview",
+        variant: "destructive",
+      });
+    } finally {
+      setProfileLoading(false);
+    }
+  };
 
   const handleAcceptConnection = async (notification: Notification) => {
     if (!notification.connectionId) return;
@@ -142,7 +188,7 @@ export default function Notifications() {
   }
 
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar}>
+    <DashboardLayout navItems={NAV} groupLabel="Student" userName={formatName(currentUser.name)} userRole="Student" userAvatar={currentUser.avatar}>
       <div className="mb-6">
         <h2 className="text-xl font-bold text-foreground">Notifications</h2>
         <p className="text-sm text-muted-foreground">{unreadCount} unread</p>
@@ -164,6 +210,14 @@ export default function Notifications() {
                 <div className="flex gap-2 mt-3">
                   <Button
                     size="sm"
+                    variant="outline"
+                    onClick={() => handleViewProfile(n)}
+                    disabled={processingActions.has(n.id)}
+                  >
+                    View Profile
+                  </Button>
+                  <Button
+                    size="sm"
                     onClick={() => handleAcceptConnection(n)}
                     disabled={processingActions.has(n.id)}
                   >
@@ -183,6 +237,59 @@ export default function Notifications() {
           </div>
         ))}
       </div>
+
+      <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Profile Preview</DialogTitle>
+            <DialogDescription>Review this request before accepting or rejecting.</DialogDescription>
+          </DialogHeader>
+
+          {profileLoading && !selectedProfile ? (
+            <p className="text-sm text-muted-foreground">Loading profile...</p>
+          ) : selectedProfile ? (
+            <div className="space-y-4">
+              <div className="flex items-start gap-4">
+                {renderAvatar(selectedProfile.avatar, selectedProfile.name, "h-14 w-14 text-base")}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-foreground">{formatName(selectedProfile.name)}</h3>
+                    <Badge variant="secondary" className="capitalize">{selectedProfile.role}</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{selectedProfile.domain || "Domain not provided"}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedProfile.company ? `${selectedProfile.company} · ` : ""}
+                    {selectedProfile.passOutYear ? `Class of ${selectedProfile.passOutYear}` : "Batch not provided"}
+                  </p>
+                </div>
+              </div>
+
+              {selectedProfile.bio && (
+                <p className="text-sm text-foreground">{selectedProfile.bio}</p>
+              )}
+
+              {selectedProfile.skills?.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedProfile.skills.slice(0, 8).map(skill => (
+                    <Badge key={skill} variant="outline">{skill}</Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Profile preview is unavailable.</p>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setProfileDialogOpen(false)}>Close</Button>
+            {selectedProfileId && (
+              <Button onClick={() => navigate(`/profile/${selectedProfileId}`)}>
+                <ExternalLink className="h-4 w-4 mr-1.5" /> Open Full Profile
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

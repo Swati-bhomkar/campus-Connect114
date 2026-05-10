@@ -4,11 +4,10 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PostCard } from "@/components/PostCard";
 import { ReputationBadge, VerificationBadge, AvailabilityIndicator } from "@/components/StatusBadges";
 import { getUserById as getUserByIdAPI, getCurrentUser, sendConnectionRequest, getConnectionStatus, cancelConnectionRequest } from "@/lib/api";
-import { renderAvatar } from "@/lib/utils";
-import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, UserPlus, Eye } from "lucide-react";
+import { formatName, renderAvatar } from "@/lib/utils";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@/lib/mock-data";
 
@@ -130,18 +129,20 @@ export default function ProfileView() {
     );
   }
 
-  const userPosts = []; // TODO: Implement posts fetching
+  const currentUserName = formatName(currentUser.name);
+  const displayName = formatName(user.name);
+  const displayCurrentUser = { ...currentUser, name: currentUserName };
 
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>
+    <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUserName} userRole="Student" userAvatar={currentUser.avatar} currentUser={displayCurrentUser}>
       <div className="max-w-2xl mx-auto">
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex items-start gap-5">
-              {renderAvatar(user.avatar, user.name)}
+              {renderAvatar(user.avatar, displayName)}
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-lg font-bold text-foreground">{user.name}</h3>
+                  <h3 className="text-lg font-bold text-foreground">{displayName}</h3>
                   {user.role === "alumni" && <VerificationBadge status={user.companyVerified} />}
                   <ReputationBadge score={user.reputationScore} />
                 </div>
@@ -156,14 +157,13 @@ export default function ProfileView() {
 
             <div className="flex gap-2 mt-5 pt-4 border-t">
               <Button 
-                className="flex-1" 
+                className="flex-1"
                 onClick={handleConnect}
                 disabled={connectionStatus === "accepted" || isConnecting}
               >
                 <UserPlus className="h-4 w-4 mr-1.5" /> 
                 {isConnecting ? (connectionStatus === "pending" ? "Cancelling..." : "Connecting...") : connectionStatus === "pending" ? "Requested" : connectionStatus === "accepted" ? "Connected" : "Connect"}
               </Button>
-              <Button variant="outline" className="flex-1"><Eye className="h-4 w-4 mr-1.5" /> Follow</Button>
             </div>
           </CardContent>
         </Card>
@@ -196,16 +196,6 @@ export default function ProfileView() {
             </div>
           </CardContent>
         </Card>
-
-        {/* User's Posts - Temporarily disabled */}
-        {userPosts.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Posts by {user.name}</h3>
-            <div className="space-y-4">
-              {userPosts.map(p => <PostCard key={p.id} post={p} />)}
-            </div>
-          </div>
-        )}
       </div>
     </DashboardLayout>
   );

@@ -5,6 +5,7 @@ import { PostCard } from "@/components/PostCard";
 import { ReferralRequestCard } from "@/components/ReferralRequestCard";
 import { getConnectionCount, getFeedPosts, getMyPosts, getSentReferralRequests } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { formatName } from "@/lib/utils";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Post, ReferralRequest, User as AppUser } from "@/lib/mock-data";
@@ -88,12 +89,13 @@ export default function StudentDashboard() {
   const recentReferrals = sentReferrals.slice(0, 3);
   const latestPosts = feedPosts.slice(0, 3);
   const currentUserId = currentUser.id || (currentUser as DashboardUser)._id || "";
-  const dashboardUser = { ...currentUser, id: currentUserId };
+  const displayName = formatName(currentUser.name);
+  const dashboardUser = { ...currentUser, id: currentUserId, name: displayName };
 
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={dashboardUser}>
+    <DashboardLayout navItems={NAV} groupLabel="Student" userName={displayName} userRole="Student" userAvatar={currentUser.avatar} currentUser={dashboardUser}>
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-foreground">Welcome back, {currentUser.name.split(" ")[0]}</h2>
+        <h2 className="text-xl font-bold text-foreground">Welcome back, {displayName.split(" ")[0]}</h2>
         <p className="text-sm text-muted-foreground">Here's your activity overview</p>
       </div>
 

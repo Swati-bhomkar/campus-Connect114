@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PostCard } from "@/components/PostCard";
 import { ReputationBadge, VerificationBadge, AvailabilityIndicator } from "@/components/StatusBadges";
-import { renderAvatar } from "@/lib/utils";
-import { User, POSTS } from "@/lib/mock-data";
-import { getCurrentUser ,updateCurrentUser } from "@/lib/api";
-import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Settings, Pencil, Save, X } from "lucide-react";
+import { formatName, renderAvatar } from "@/lib/utils";
+import { User } from "@/lib/mock-data";
+import { getCurrentUser, updateCurrentUser as saveCurrentUser } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Settings, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 
 const NAV = [
@@ -25,6 +25,7 @@ const NAV = [
 ];
 
 export default function AlumniProfile() {
+  const { updateCurrentUser } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -35,11 +36,6 @@ export default function AlumniProfile() {
     avatar: "",
   });
   const [saving, setSaving] = useState(false);
-
-  const posts = user
-  ? POSTS.filter(p => p.authorId === user.id)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  : [];
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -68,8 +64,12 @@ export default function AlumniProfile() {
 
     setSaving(true);
     try {
-      const updatedUser = await updateCurrentUser(editData);
+      const updatedUser = await saveCurrentUser({
+        ...editData,
+        name: formatName(editData.name),
+      });
       setUser(updatedUser);
+      updateCurrentUser(updatedUser);
       setEditing(false);
       toast.success("Profile updated successfully");
     } catch (error) {
@@ -115,8 +115,11 @@ export default function AlumniProfile() {
     );
   }
 
+  const displayName = formatName(user.name);
+  const displayUser = { ...user, name: displayName };
+
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Alumni" userName={user.name} userRole="Alumni" userAvatar={user.avatar} currentUser={user}>
+    <DashboardLayout navItems={NAV} groupLabel="Alumni" userName={displayName} userRole="Alumni" userAvatar={user.avatar} currentUser={displayUser}>
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-foreground">My Profile</h2>
@@ -163,7 +166,7 @@ export default function AlumniProfile() {
                       className="text-lg font-bold"
                     />
                   ) : (
-                    <h3 className="text-lg font-bold text-foreground">{user.name}</h3>
+                    <h3 className="text-lg font-bold text-foreground">{displayName}</h3>
                   )}
                   <VerificationBadge status={user.companyVerified} />
                   <ReputationBadge score={user.reputationScore} />
@@ -262,20 +265,6 @@ export default function AlumniProfile() {
             </div>
           </CardContent>
         </Card>
-
-        {/* User's Posts */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4">My Posts</h3>
-          {posts.length === 0 ? (
-            <Card><CardContent className="p-6 text-center text-muted-foreground">You haven't created any posts yet.</CardContent></Card>
-          ) : (
-            <div className="space-y-4">
-              {posts.map(p => (
-                <PostCard key={p.id} post={p} currentUserId={user.id} onDelete={() => {}} />
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </DashboardLayout>
   );

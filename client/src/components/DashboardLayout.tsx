@@ -5,11 +5,11 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { NavLink } from "@/components/NavLink";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Bell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { LucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { formatName, renderAvatar } from "@/lib/utils";
 import { CareerChatbot } from "@/components/CareerChatbot";
 import { getUnreadNotificationCount } from "@/lib/api";
 import type { User } from "@/lib/mock-data";
@@ -33,8 +33,8 @@ interface DashboardLayoutProps {
 function SidebarNav({ navItems, groupLabel, userName, userRole, userAvatar }: Omit<DashboardLayoutProps, "children">) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
   const navigate = useNavigate();
+  const displayName = formatName(userName);
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -83,12 +83,10 @@ function SidebarNav({ navItems, groupLabel, userName, userRole, userAvatar }: Om
 
       <div className="mt-auto border-t border-sidebar-border p-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-xs font-semibold">
-            {userAvatar}
-          </div>
+          {renderAvatar(userAvatar, displayName, "h-8 w-8 text-xs bg-sidebar-primary text-sidebar-primary-foreground")}
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-sidebar-foreground">{userName}</p>
+              <p className="truncate text-sm font-medium text-sidebar-foreground">{displayName}</p>
               <p className="truncate text-xs text-sidebar-foreground/50 capitalize">{userRole}</p>
             </div>
           )}

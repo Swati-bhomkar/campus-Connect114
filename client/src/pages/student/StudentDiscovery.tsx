@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { searchUsers, getCurrentUser } from "@/lib/api";
+import { formatName } from "@/lib/utils";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Settings } from "lucide-react";
 import type { User } from "@/lib/mock-data";
 
@@ -92,13 +93,6 @@ export default function StudentDiscovery() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const [connectionUpdateTrigger, setConnectionUpdateTrigger] = useState(0);
-
-  // Fetch users when filters change
-  useEffect(() => {
-    fetchUsers();
-  }, [debouncedSearch, domain, company, year, roleFilter, onlyAvailable, connectionUpdateTrigger]);
-
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
@@ -124,14 +118,22 @@ export default function StudentDiscovery() {
     }
   }, [debouncedSearch, domain, company, year, roleFilter, onlyAvailable]);
 
+  // Fetch users when filters change
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const currentUserName = formatName(currentUser?.name || "User");
+  const displayCurrentUser = currentUser ? { ...currentUser, name: currentUserName } : undefined;
+
   return (
     <DashboardLayout 
       navItems={NAV} 
       groupLabel={roleLabel} 
-      userName={currentUser?.name || "User"} 
+      userName={currentUserName} 
       userRole={roleLabel} 
       userAvatar={currentUser?.avatar || ""} 
-      currentUser={currentUser || undefined}
+      currentUser={displayCurrentUser}
     >
       <h2 className="text-xl font-bold text-foreground mb-1">Discover People</h2>
       <p className="text-sm text-muted-foreground mb-6">Find alumni and peers from your college</p>
@@ -208,7 +210,6 @@ export default function StudentDiscovery() {
                   <ProfileCard 
                     key={u.id} 
                     user={u} 
-                    onConnectionUpdate={() => setConnectionUpdateTrigger(prev => prev + 1)}
                   />
                 ))}
               </div>

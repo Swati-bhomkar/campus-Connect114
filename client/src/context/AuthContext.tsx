@@ -10,6 +10,7 @@ interface AuthContextValue {
   login: (token: string, user: User) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  updateCurrentUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -80,6 +81,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   };
 
+  const updateCurrentUser = (user: User) => {
+    localStorage.setItem("user", JSON.stringify(user));
+    setCurrentUser(user);
+  };
+
   const value = useMemo(
     () => ({
       currentUser,
@@ -89,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login,
       logout,
       refreshUser,
+      updateCurrentUser,
     }),
     [currentUser, token, loading]
   );
