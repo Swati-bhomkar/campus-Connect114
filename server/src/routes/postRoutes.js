@@ -1,5 +1,5 @@
 import express from "express";
-import { createPost, getMyPosts, getFeedPosts, getPostById } from "../controllers/postController.js";
+import { createPost, deletePost, getMyPosts, getFeedPosts, getPostById } from "../controllers/postController.js";
 import { authenticateToken } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -15,6 +15,9 @@ router.get("/me", getMyPosts);
 
 // GET /api/posts/feed - Get network feed posts
 router.get("/feed", getFeedPosts);
+
+// DELETE /api/posts/:id - Delete current user's post
+router.delete("/:id", deletePost);
 
 // GET /api/posts/:id - Get a single post by ID
 router.get("/:id", getPostById);

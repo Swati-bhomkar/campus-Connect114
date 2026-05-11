@@ -38,6 +38,7 @@ export const getCurrentUser = async () => {
   // Normalize API response: map collegEmail to email
   const user = {
     ...data.user,
+    id: data.user.id || data.user._id,
     email: data.user.collegEmail,
   };
 
@@ -333,6 +334,7 @@ export const createPost = async (postData: {
   domain: string;
   metadata: object;
   imageUrl?: string;
+  expiresAt?: string | null;
 }) => {
   const response = await fetch(`${API_BASE_URL}/api/posts`, {
     method: "POST",
@@ -347,6 +349,24 @@ export const createPost = async (postData: {
   }
 
   return data.post;
+};
+
+/**
+ * Delete a post owned by current user
+ */
+export const deletePost = async (id: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/posts/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to delete post");
+  }
+
+  return data;
 };
 
 /**

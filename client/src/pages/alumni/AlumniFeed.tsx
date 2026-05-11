@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PostCard } from "@/components/PostCard";
-import { getFeedPosts } from "@/lib/api";
+import { deletePost, getFeedPosts } from "@/lib/api";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -40,14 +40,21 @@ export default function AlumniFeed() {
     fetchPosts();
   }, []);
 
-  const handleDelete = (postId: string) => {
-    setPosts(prev => prev.filter(p => p.id !== postId));
-    toast.success("Post deleted successfully");
+  const handleDelete = async (postId: string) => {
+    try {
+      await deletePost(postId);
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      toast.success("Post deleted successfully");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete post");
+    }
   };
 
   if (authLoading || !currentUser) {
     return null;
   }
+
+  const currentUserId = currentUser.id || (currentUser as typeof currentUser & { _id?: string })._id || "";
 
   return (
     <DashboardLayout navItems={NAV} groupLabel="Alumni" userName={currentUser.name} userRole="Alumni" userAvatar={currentUser.avatar} currentUser={currentUser}>
@@ -66,7 +73,7 @@ export default function AlumniFeed() {
         </div>
       ) : (
         <div className="max-w-2xl space-y-4">
-          {posts.map(p => <PostCard key={p.id} post={p} currentUserId={currentUser.id} onDelete={handleDelete} />)}
+          {posts.map(p => <PostCard key={p.id} post={p} currentUserId={currentUserId} onDelete={handleDelete} />)}
         </div>
       )}
     </DashboardLayout>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PostCard } from "@/components/PostCard";
-import { getFeedPosts } from "@/lib/api";
+import { deletePost, getMyPosts } from "@/lib/api";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -26,8 +26,7 @@ export default function AlumniPosts() {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        // CHANGED: using feed API instead of my posts API
-        const fetchedPosts = await getFeedPosts();
+        const fetchedPosts = await getMyPosts();
         setPosts(fetchedPosts);
       } catch (error) {
         console.error("Failed to fetch posts:", error);
@@ -40,14 +39,21 @@ export default function AlumniPosts() {
     fetchPosts();
   }, []);
 
-  const handleDelete = (postId: string) => {
-    setPosts(prev => prev.filter(p => p.id !== postId));
-    toast.success("Post deleted successfully");
+  const handleDelete = async (postId: string) => {
+    try {
+      await deletePost(postId);
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      toast.success("Post deleted successfully");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete post");
+    }
   };
 
   if (authLoading || !currentUser) {
     return null;
   }
+
+  const currentUserId = currentUser.id || (currentUser as typeof currentUser & { _id?: string })._id || "";
 
   return (
     <DashboardLayout
@@ -59,11 +65,11 @@ export default function AlumniPosts() {
       currentUser={currentUser}
     >
       <h2 className="text-xl font-bold text-foreground mb-1">
-        Network Posts
+        My Posts
       </h2>
 
       <p className="text-sm text-muted-foreground mb-6">
-        Posts from you and your connected students/alumni
+        Posts published by you
       </p>
 
       {loading ? (
@@ -84,8 +90,9 @@ export default function AlumniPosts() {
             <PostCard
               key={p.id}
               post={p}
-              currentUserId={currentUser.id}
+              currentUserId={currentUserId}
               onDelete={handleDelete}
+              canDelete
             />
           ))}
         </div>

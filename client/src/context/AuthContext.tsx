@@ -17,6 +17,11 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const getStoredToken = () => localStorage.getItem("token");
 
+const normalizeUser = (user: User): User => ({
+  ...user,
+  id: user.id || (user as User & { _id?: string })._id || "",
+});
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(getStoredToken());
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -40,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
 
     try {
-      const user = await getCurrentUser();
+      const user = normalizeUser(await getCurrentUser());
       localStorage.setItem("user", JSON.stringify(user));
       setCurrentUser(user);
       setToken(storedToken);
@@ -61,16 +66,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token]);
 
   const login = (newToken: string, user: User) => {
+    const normalizedUser = normalizeUser(user);
     localStorage.setItem("token", newToken);
-    localStorage.setItem("user", JSON.stringify(user));
+    localStorage.setItem("user", JSON.stringify(normalizedUser));
     setToken(newToken);
-    setCurrentUser(user);
+    setCurrentUser(normalizedUser);
     setLoading(false);
   };
 
   const updateCurrentUser = (user: User) => {
-    localStorage.setItem("user", JSON.stringify(user));
-    setCurrentUser(user);
+    const normalizedUser = normalizeUser(user);
+    localStorage.setItem("user", JSON.stringify(normalizedUser));
+    setCurrentUser(normalizedUser);
   };
 
   const value = useMemo(

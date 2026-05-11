@@ -70,6 +70,7 @@ postSchema.index({ authorId: 1 });
 postSchema.index({ type: 1 });
 postSchema.index({ status: 1 });
 postSchema.index({ visibility: 1 });
+postSchema.index({ expiresAt: 1 });
 postSchema.index({ createdAt: -1 });
 postSchema.index({ type: 1, status: 1, visibility: 1, createdAt: -1 });
 

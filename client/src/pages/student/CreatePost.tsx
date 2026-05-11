@@ -90,6 +90,7 @@ export default function CreatePost() {
   const [description, setDescription] = useState("");
   const [company, setCompany] = useState("");
   const [domain, setDomain] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState("");
@@ -170,6 +171,7 @@ export default function CreatePost() {
         domain: domain.trim(),
         metadata,
         imageUrl: imagePreview, // TODO: Replace with proper file upload/storage
+        expiresAt: isAlumni && expiresAt ? expiresAt : null,
       };
 
       await createPost(payload);
@@ -243,6 +245,17 @@ export default function CreatePost() {
                 <Input placeholder="e.g. Frontend Development" value={domain} onChange={e => setDomain(e.target.value)} />
               </div>
             </div>
+
+            {isAlumni && (
+              <div className="space-y-2">
+                <Label>Post Expiry Date</Label>
+                <Input
+                  type="date"
+                  value={expiresAt}
+                  onChange={e => setExpiresAt(e.target.value)}
+                />
+              </div>
+            )}
 
             {/* Dynamic fields based on post type */}
             {postType === "job_opening" && (

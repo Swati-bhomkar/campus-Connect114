@@ -61,6 +61,7 @@ interface Post {
   domain: string;
 
   createdAt: string;
+  expiresAt?: string | null;
 
   batch?: number;
   jobLink?: string;
@@ -77,9 +78,10 @@ interface PostCardProps {
   onFlag?: (postId: string) => void;
   showAdminActions?: boolean;
   currentUserId?: string;
+  canDelete?: boolean;
 }
 
-export function PostCard({ post, className, onDelete, onFlag, showAdminActions, currentUserId }: PostCardProps) {
+export function PostCard({ post, className, onDelete, onFlag, showAdminActions, currentUserId, canDelete }: PostCardProps) {
 const author = {
   name: post.authorName || "Unknown User",
   avatar: post.authorAvatar || "",
@@ -89,6 +91,7 @@ const author = {
   const Icon = config.icon;
   const [imgError, setImgError] = useState(false);
   const isOwner = currentUserId && post.authorId === currentUserId;
+  const showDeleteAction = Boolean(onDelete && !showAdminActions && (canDelete || isOwner));
 
   return (
     <Card className={cn("transition-shadow hover:shadow-md", post.flagged && "border-destructive/50", className)}>
@@ -109,6 +112,12 @@ const author = {
               <Icon className="h-3 w-3" />
               {config.label}
             </Badge>
+            {post.expiresAt && (
+              <Badge variant="outline" className="shrink-0 gap-1 text-xs text-muted-foreground">
+                <Calendar className="h-3 w-3" />
+                Expires on {new Date(post.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -299,7 +308,7 @@ const author = {
         )}
 
         {/* Owner delete button */}
-        {isOwner && !showAdminActions && onDelete && (
+        {showDeleteAction && (
           <div className="mt-3 border-t pt-3">
             <AlertDialog>
               <AlertDialogTrigger asChild>

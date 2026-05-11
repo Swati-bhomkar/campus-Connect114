@@ -1,7 +1,7 @@
 export type UserRole = "student" | "alumni" | "admin";
 export type ConnectionStatus = "pending" | "accepted" | "rejected";
 export type ReferralStatus = "pending" | "accepted" | "rejected" | "expired";
-export type PostType = "internship_achievement" | "hackathon_achievement" | "job_opening" | "internship_opening" | "referral_opportunity";
+export type PostType = "internship_achievement" | "hackathon_achievement" | "job_opening" | "internship_opening" | "referral_opportunity" | "event";
 export type VerificationStatus = "verified" | "pending" | "unverified";
 
 export interface User {
@@ -65,6 +65,7 @@ export interface Post {
   domain: string;
   batch: number;
   createdAt: string;
+  expiresAt?: string | null;
   jobLink?: string;
   imageUrl?: string;
   flagged?: boolean;

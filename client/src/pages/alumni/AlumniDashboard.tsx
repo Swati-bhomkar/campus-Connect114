@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatsCard } from "@/components/StatsCard";
 import { ReferralRequestCard } from "@/components/ReferralRequestCard";
 import { PostCard } from "@/components/PostCard";
-import { getConnectionCount, getFeedPosts, getMyPosts, getReceivedReferralRequests } from "@/lib/api";
+import { deletePost, getConnectionCount, getFeedPosts, getMyPosts, getReceivedReferralRequests } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { formatName } from "@/lib/utils";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Settings, Loader2 } from "lucide-react";
@@ -91,6 +91,16 @@ export default function AlumniDashboard() {
   const currentUserId = currentUser.id || (currentUser as DashboardUser)._id || "";
   const displayName = formatName(currentUser.name);
   const dashboardUser = { ...currentUser, id: currentUserId, name: displayName };
+  const handleDelete = async (postId: string) => {
+    try {
+      await deletePost(postId);
+      setFeedPosts(prev => prev.filter(p => p.id !== postId));
+      setMyPostsCount(prev => Math.max(0, prev - 1));
+      toast.success("Post deleted successfully");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete post");
+    }
+  };
 
   return (
     <DashboardLayout navItems={NAV} groupLabel="Alumni" userName={displayName} userRole="Alumni" userAvatar={currentUser.avatar} currentUser={dashboardUser}>
@@ -131,7 +141,7 @@ export default function AlumniDashboard() {
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading network posts...
               </p>
             ) : latestNetworkPosts.length > 0 ? (
-              latestNetworkPosts.map(p => <PostCard key={p.id} post={p} currentUserId={currentUserId} />)
+              latestNetworkPosts.map(p => <PostCard key={p.id} post={p} currentUserId={currentUserId} onDelete={handleDelete} />)
             ) : (
               <p className="text-sm text-muted-foreground p-4 rounded-lg bg-secondary/50">No posts in your network yet</p>
             )}

@@ -4,6 +4,14 @@ import User from "../models/User.js";
 import Notification from "../models/Notification.js";
 import { validationResult } from "express-validator";
 
+const activePostFilter = () => ({
+  $or: [
+    { expiresAt: null },
+    { expiresAt: { $exists: false } },
+    { expiresAt: { $gte: new Date() } },
+  ],
+});
+
 const serializeUser = (user) => {
   if (!user) return null;
 
@@ -71,7 +79,11 @@ export const createReferralRequest = async (req, res) => {
     const requesterRole = req.user.role;
 
     // Validate referral post exists and is referral type
-    const post = await Post.findById(referralPostId);
+    const post = await Post.findOne({
+      _id: referralPostId,
+      status: "published",
+      ...activePostFilter(),
+    });
     if (!post) {
       return res.status(404).json({
         success: false,
