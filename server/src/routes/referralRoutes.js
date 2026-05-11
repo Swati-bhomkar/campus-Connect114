@@ -5,6 +5,7 @@ import {
   getSentRequests,
   getReceivedRequests,
   updateRequestStatus,
+  uploadReferralResume,
 } from "../controllers/referralController.js";
 import { authenticateToken } from "../middleware/auth.js";
 
@@ -12,6 +13,9 @@ const router = express.Router();
 
 // All routes require authentication
 router.use(authenticateToken);
+
+// POST /api/referrals/resume - Upload a referral resume PDF
+router.post("/resume", uploadReferralResume);
 
 // POST /api/referrals - Create a new referral request
 router.post(

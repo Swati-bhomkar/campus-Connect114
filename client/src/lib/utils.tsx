@@ -1,9 +1,32 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+export const normalizeExternalUrl = (url?: string | null) => {
+  const trimmed = url?.trim();
+  if (!trimmed) return "";
+
+  if (/^(https?:)?\/\//i.test(trimmed)) {
+    return trimmed.startsWith("//") ? `https:${trimmed}` : trimmed;
+  }
+
+  return `https://${trimmed}`;
+};
+
+export const normalizeBackendUrl = (url?: string | null) => {
+  const trimmed = url?.trim();
+  if (!trimmed) return "";
+
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("/")) return `${API_BASE_URL}${trimmed}`;
+
+  return normalizeExternalUrl(trimmed);
+};
 
 /**
  * Format a person name for display without mutating stored user data.

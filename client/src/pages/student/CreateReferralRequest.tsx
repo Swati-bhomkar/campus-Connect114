@@ -9,7 +9,7 @@ import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, 
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { getPostById, createReferralRequest } from "@/lib/api";
+import { getPostById, createReferralRequest, uploadReferralResume } from "@/lib/api";
 
 const STUDENT_NAV = [
   { title: "Overview", url: "/student", icon: LayoutDashboard },
@@ -127,8 +127,7 @@ export default function CreateReferralRequest() {
     setIsSubmitting(true);
 
     try {
-      const userId = currentUser.id || (currentUser as any)._id;
-      const resumeUrl = `/resumes/${userId}_${Date.now()}.pdf`;
+      const resumeUrl = await uploadReferralResume(resumeFile);
       const payload = {
         referralPostId: postId!,
         motivation: motivation.trim(),

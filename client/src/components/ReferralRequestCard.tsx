@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import type { ReferralRequest as MockReferralRequest } from "@/lib/mock-data";
 import { getUserById } from "@/lib/mock-data";
 import { FileText, Check, X, Clock, AlertTriangle, ExternalLink } from "lucide-react";
-import { cn, formatName, renderAvatar } from "@/lib/utils";
+import { cn, formatName, normalizeBackendUrl, normalizeExternalUrl, renderAvatar } from "@/lib/utils";
 
 const statusConfig: Record<string, { label: string; cls: string; icon: typeof Check }> = {
   pending: { label: "Pending", cls: "text-amber-600 bg-amber-50", icon: Clock },
@@ -112,13 +112,13 @@ export function ReferralRequestCard({ request, perspective, onAccept, onReject, 
         <div className="mt-3 flex items-center justify-between">
           <div className="flex flex-wrap items-center gap-3">
             {request.resumeUrl && (
-              <a href={request.resumeUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+              <a href={normalizeBackendUrl(request.resumeUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
                 <FileText className="h-3.5 w-3.5" />
                 View Resume
               </a>
             )}
             {request.linkedinUrl && (
-              <a href={request.linkedinUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+              <a href={normalizeExternalUrl(request.linkedinUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
                 <ExternalLink className="h-3.5 w-3.5" />
                 LinkedIn
               </a>

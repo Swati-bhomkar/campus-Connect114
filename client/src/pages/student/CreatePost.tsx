@@ -284,6 +284,15 @@ export default function CreatePost() {
                     onChange={e => setMetadata(prev => ({ ...prev, applicationLink: e.target.value }))}
                   />
                 </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="jobPpoAvailable"
+                    checked={metadata.ppoAvailable || false}
+                    onChange={e => setMetadata(prev => ({ ...prev, ppoAvailable: Boolean(e.target.checked) }))}
+                  />
+                  <Label htmlFor="jobPpoAvailable">PPO Available</Label>
+                </div>
                 <div className="space-y-2">
                   <Label>Eligible Batches</Label>
                   <p className="text-xs text-muted-foreground">Select which graduation years are eligible</p>
@@ -412,6 +421,15 @@ export default function CreatePost() {
                     onChange={e => setMetadata(prev => ({ ...prev, requiresConnection: Boolean(e.target.checked) }))}
                   />
                   <Label htmlFor="requiresConnection">Requires Connection</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="referralPpoAvailable"
+                    checked={metadata.ppoAvailable || false}
+                    onChange={e => setMetadata(prev => ({ ...prev, ppoAvailable: Boolean(e.target.checked) }))}
+                  />
+                  <Label htmlFor="referralPpoAvailable">PPO Available</Label>
                 </div>
               </div>
             )}

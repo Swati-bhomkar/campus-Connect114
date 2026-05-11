@@ -3,6 +3,13 @@ import Post from "../models/Post.js";
 import User from "../models/User.js";
 import Notification from "../models/Notification.js";
 import { validationResult } from "express-validator";
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const resumeUploadDir = path.resolve(__dirname, "../../uploads/resumes");
 
 const activePostFilter = () => ({
   $or: [
@@ -54,6 +61,55 @@ const serializeReferralRequest = (request) => {
     alumni,
     referralPost,
   };
+};
+
+export const uploadReferralResume = async (req, res) => {
+  try {
+    const { fileName, fileData } = req.body;
+
+    if (!fileName || !fileData) {
+      return res.status(400).json({
+        success: false,
+        message: "Resume file is required",
+      });
+    }
+
+    if (!fileName.toLowerCase().endsWith(".pdf")) {
+      return res.status(400).json({
+        success: false,
+        message: "Resume must be a PDF file",
+      });
+    }
+
+    const base64Data = String(fileData).replace(/^data:application\/pdf;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+
+    if (!buffer.length || buffer.length > 5 * 1024 * 1024 || buffer.subarray(0, 4).toString() !== "%PDF") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid PDF resume",
+      });
+    }
+
+    await fs.mkdir(resumeUploadDir, { recursive: true });
+
+    const safeUserId = req.user._id.toString();
+    const storedFileName = `${safeUserId}_${Date.now()}.pdf`;
+    const filePath = path.join(resumeUploadDir, storedFileName);
+
+    await fs.writeFile(filePath, buffer);
+
+    res.status(201).json({
+      success: true,
+      resumeUrl: `${req.protocol}://${req.get("host")}/resumes/${storedFileName}`,
+    });
+  } catch (error) {
+    console.error("Resume upload error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to upload resume",
+    });
+  }
 };
 
 /**

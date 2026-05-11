@@ -250,6 +250,17 @@ export default function Notifications() {
                   </Button>
                 </div>
               )}
+              {n.type === "referral_update" && (
+                <div className="flex gap-2 mt-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigate(n.linkTo || "/alumni/requests")}
+                  >
+                    View Request
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         ))}

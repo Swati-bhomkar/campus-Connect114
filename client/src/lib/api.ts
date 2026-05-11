@@ -20,6 +20,14 @@ const normalizeReferralRequest = (request: any) => ({
   referralPostId: request.referralPostId?.id || request.referralPostId?._id || request.referralPostId,
 });
 
+const readFileAsDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+
 /**
  * Get current user profile
  */
@@ -421,6 +429,29 @@ export const getPostById = async (id: string) => {
   }
 
   return data.post;
+};
+
+/**
+ * Upload a referral resume PDF and return its accessible URL
+ */
+export const uploadReferralResume = async (file: File) => {
+  const fileData = await readFileAsDataUrl(file);
+  const response = await fetch(`${API_BASE_URL}/api/referrals/resume`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      fileName: file.name,
+      fileData,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to upload resume");
+  }
+
+  return data.resumeUrl;
 };
 
 /**

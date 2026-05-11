@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {AlertDialog,AlertDialogAction,AlertDialogCancel,AlertDialogContent,AlertDialogDescription,AlertDialogFooter,AlertDialogHeader,AlertDialogTitle,AlertDialogTrigger,} from "@/components/ui/alert-dialog";
 import { Briefcase, Trophy, Award, Megaphone, ExternalLink, GraduationCap, ImageIcon, Trash2, MapPin, Clock, Monitor, Calendar, Tag, Send } from "lucide-react";
-import { cn, renderAvatar } from "@/lib/utils";
+import { cn, normalizeExternalUrl, renderAvatar } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -23,6 +23,7 @@ interface PostMetadata {
 
   internshipDuration?: string;
   mode?: string;
+  ppoAvailable?: boolean;
 
   deadline?: string;
 
@@ -116,6 +117,11 @@ const author = {
               <Badge variant="outline" className="shrink-0 gap-1 text-xs text-muted-foreground">
                 <Calendar className="h-3 w-3" />
                 Expires on {new Date(post.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+              </Badge>
+            )}
+            {post.metadata?.ppoAvailable && (
+              <Badge variant="outline" className="shrink-0 text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                PPO Available
               </Badge>
             )}
           </div>
@@ -252,7 +258,7 @@ const author = {
                 <span className="rounded bg-secondary px-2 py-0.5">Batch {post.batch}</span>
               )}
               {post.jobLink && (
-                <a href={post.jobLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline ml-auto">
+                <a href={normalizeExternalUrl(post.jobLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline ml-auto">
                   Apply <ExternalLink className="h-3 w-3" />
                 </a>
               )}
@@ -265,7 +271,7 @@ const author = {
           <div className="mt-3 flex gap-2 flex-wrap">
             {post.type === "job_opening" && post.metadata.applicationLink && (
               <a
-                href={post.metadata.applicationLink}
+                href={normalizeExternalUrl(post.metadata.applicationLink)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
@@ -275,7 +281,7 @@ const author = {
             )}
             {post.type === "internship_opening" && post.metadata.applicationLink && (
               <a
-                href={post.metadata.applicationLink}
+                href={normalizeExternalUrl(post.metadata.applicationLink)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-teal-100 text-teal-700 hover:bg-teal-200 transition-colors"
@@ -296,7 +302,7 @@ const author = {
             )}
             {post.type === "event" && post.metadata.registrationLink && (
               <a
-                href={post.metadata.registrationLink}
+                href={normalizeExternalUrl(post.metadata.registrationLink)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors"
