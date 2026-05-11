@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { getCurrentUser, getNotifications, markAllNotificationsRead, acceptConnection, rejectConnection, getUserById } from "@/lib/api";
-import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Bell, ExternalLink } from "lucide-react";
+import { getNotifications, markAllNotificationsRead, acceptConnection, rejectConnection, getUserById } from "@/lib/api";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Bell, ExternalLink, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,6 +9,7 @@ import { cn, formatName, renderAvatar } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import type { User } from "@/lib/mock-data";
+import { useAuth } from "@/context/AuthContext";
 
 interface Notification {
   id: string;
@@ -21,7 +22,7 @@ interface Notification {
   linkTo?: string | null;
 }
 
-const NAV = [
+const STUDENT_NAV = [
   { title: "Overview", url: "/student", icon: LayoutDashboard },
   { title: "Discovery", url: "/student/discovery", icon: Search },
   { title: "Connections", url: "/student/connections", icon: Users },
@@ -29,6 +30,17 @@ const NAV = [
   { title: "Posts", url: "/student/posts", icon: Newspaper },
   { title: "Create Post", url: "/student/create-post", icon: PlusCircle },
 { title: "My Profile", url: "/student/profile", icon: UserIcon },
+];
+
+const ALUMNI_NAV = [
+  { title: "Overview", url: "/alumni", icon: LayoutDashboard },
+  { title: "Discovery", url: "/alumni/discovery", icon: Search },
+  { title: "Incoming Requests", url: "/alumni/requests", icon: FileText },
+  { title: "Connections", url: "/alumni/connections", icon: Users },
+  { title: "My Posts", url: "/alumni/posts", icon: Newspaper },
+  { title: "Create Post", url: "/alumni/create-post", icon: PlusCircle },
+  { title: "Referral Settings", url: "/alumni/settings", icon: Settings },
+  { title: "My Profile", url: "/alumni/profile", icon: UserIcon },
 ];
 
 const typeConfig: Record<string, { cls: string }> = {
@@ -41,7 +53,7 @@ const typeConfig: Record<string, { cls: string }> = {
 
 export default function Notifications() {
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { currentUser, loading: authLoading } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingActions, setProcessingActions] = useState<Set<string>>(new Set());
@@ -52,13 +64,11 @@ export default function Notifications() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchUserAndNotifications = async () => {
+    if (authLoading || !currentUser) return;
+
+    const fetchNotifications = async () => {
       try {
-        const [userData, notificationsData] = await Promise.all([
-          getCurrentUser(),
-          getNotifications()
-        ]);
-        setCurrentUser(userData);
+        const notificationsData = await getNotifications();
         setNotifications(notificationsData);
 
         // Auto-mark all notifications as read when page loads
@@ -78,8 +88,8 @@ export default function Notifications() {
       }
     };
 
-    fetchUserAndNotifications();
-  }, [toast]);
+    fetchNotifications();
+  }, [authLoading, currentUser, toast]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
   const selectedProfile = selectedProfileId ? profileCache[selectedProfileId] : null;
@@ -179,7 +189,7 @@ export default function Notifications() {
     }
   };
 
-  if (loading || !currentUser) {
+  if (authLoading || loading || !currentUser) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-muted-foreground">Loading...</p>
@@ -188,7 +198,14 @@ export default function Notifications() {
   }
 
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Student" userName={formatName(currentUser.name)} userRole="Student" userAvatar={currentUser.avatar}>
+    <DashboardLayout
+      navItems={currentUser.role === "alumni" ? ALUMNI_NAV : STUDENT_NAV}
+      groupLabel={currentUser.role === "alumni" ? "Alumni" : "Student"}
+      userName={formatName(currentUser.name)}
+      userRole={currentUser.role === "alumni" ? "Alumni" : "Student"}
+      userAvatar={currentUser.avatar}
+      currentUser={currentUser}
+    >
       <div className="mb-6">
         <h2 className="text-xl font-bold text-foreground">Notifications</h2>
         <p className="text-sm text-muted-foreground">{unreadCount} unread</p>

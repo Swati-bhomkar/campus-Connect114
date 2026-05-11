@@ -54,9 +54,6 @@ export default function StudentReferrals() {
           <h2 className="text-xl font-bold text-foreground">My Referral Requests</h2>
           <p className="text-sm text-muted-foreground">{referrals.length} request{referrals.length !== 1 ? "s" : ""} sent</p>
         </div>
-        <Button onClick={() => navigate("/student/posts")}>
-          <PlusCircle className="h-4 w-4 mr-1.5" /> New Request
-        </Button>
       </div>
 
       <div className="space-y-3">

@@ -16,23 +16,10 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const getStoredToken = () => localStorage.getItem("token");
-const getStoredUser = (): User | null => {
-  const token = getStoredToken();
-  if (!token) return null;
-
-  const raw = localStorage.getItem("user");
-  if (!raw) return null;
-
-  try {
-    return JSON.parse(raw) as User;
-  } catch {
-    return null;
-  }
-};
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(getStoredToken());
-  const [currentUser, setCurrentUser] = useState<User | null>(getStoredUser());
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(() => Boolean(getStoredToken()));
 
   const logout = () => {

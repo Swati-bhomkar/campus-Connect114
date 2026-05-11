@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { getConnections, getCurrentUser } from "@/lib/api";
+import { getConnections } from "@/lib/api";
 import { renderAvatar } from "@/lib/utils";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Check, X, Clock, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { type User } from "@/lib/mock-data";
+import { useAuth } from "@/context/AuthContext";
 
 const STUDENT_NAV = [
   { title: "Overview", url: "/student", icon: LayoutDashboard },
@@ -60,15 +60,16 @@ const purposeLabel: Record<string, string> = {
 };
 
 export default function StudentConnections() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { currentUser, loading: authLoading } = useAuth();
   const [connections, setConnections] = useState<ConnectionItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading || !currentUser) return;
+
     const fetchData = async () => {
       try {
-        const [user, connectionData] = await Promise.all([getCurrentUser(), getConnections()]);
-        setCurrentUser(user);
+        const connectionData = await getConnections();
         setConnections(connectionData);
       } catch (error) {
         console.error("Failed to load connections:", error);
@@ -78,20 +79,14 @@ export default function StudentConnections() {
     };
 
     fetchData();
-  }, []);
+  }, [authLoading, currentUser]);
 
   const isAlumni = currentUser?.role === "alumni";
   const NAV = isAlumni ? ALUMNI_NAV : STUDENT_NAV;
   const roleLabel = isAlumni ? "Alumni" : "Student";
 
-  if (loading || !currentUser) {
-    return (
-      <DashboardLayout navItems={NAV} groupLabel={roleLabel} userName={currentUser?.name || "Loading"} userRole={roleLabel} userAvatar={currentUser?.avatar || ""} currentUser={currentUser || undefined}>
-        <div className="rounded-lg border bg-card p-8 text-center">
-          <p className="text-sm text-muted-foreground">Loading connections...</p>
-        </div>
-      </DashboardLayout>
-    );
+  if (authLoading || !currentUser) {
+    return null;
   }
 
   return (
@@ -100,7 +95,11 @@ export default function StudentConnections() {
       <p className="text-sm text-muted-foreground mb-6">{connections.length} professional connections</p>
 
       <div className="space-y-3">
-        {connections.map(conn => {
+        {loading ? (
+          <div className="rounded-lg border bg-card p-8 text-center">
+            <p className="text-sm text-muted-foreground">Loading connections...</p>
+          </div>
+        ) : connections.map(conn => {
           const other = conn.connectedUser;
           const st = statusBadge[conn.status];
           const StIcon = st.icon;
@@ -125,7 +124,7 @@ export default function StudentConnections() {
           );
         })}
 
-        {connections.length === 0 && (
+        {!loading && connections.length === 0 && (
           <div className="rounded-lg border bg-card p-8 text-center">
             <p className="text-sm text-muted-foreground">No connections yet</p>
           </div>

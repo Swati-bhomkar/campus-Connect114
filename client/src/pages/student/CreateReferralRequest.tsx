@@ -154,10 +154,14 @@ export default function CreateReferralRequest() {
     }
   };
 
-  // Show loading while auth or post is loading
-  if (authLoading || postLoading) {
+  if (authLoading || !currentUser) {
+    return null;
+  }
+
+  // Show loading while the referral post is loading
+  if (postLoading) {
     return (
-      <DashboardLayout navItems={navItems} groupLabel={roleLabel} userName="" userRole={roleLabel} userAvatar="" currentUser={null}>
+      <DashboardLayout navItems={navItems} groupLabel={roleLabel} userName={currentUser.name} userRole={roleLabel} userAvatar={currentUser.avatar} currentUser={currentUser}>
         <div className="max-w-2xl mx-auto flex items-center justify-center min-h-[400px]">
           <div className="flex items-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin" />
@@ -169,7 +173,7 @@ export default function CreateReferralRequest() {
   }
 
   // Don't render anything if there's an error (will redirect)
-  if (postError || !post || !currentUser) {
+  if (postError || !post) {
     return null;
   }
 

@@ -5,13 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ReputationBadge, VerificationBadge, AvailabilityIndicator } from "@/components/StatusBadges";
-import { getUserById as getUserByIdAPI, getCurrentUser, sendConnectionRequest, getConnectionStatus, cancelConnectionRequest } from "@/lib/api";
+import { getUserById as getUserByIdAPI, sendConnectionRequest, getConnectionStatus, cancelConnectionRequest } from "@/lib/api";
 import { formatName, renderAvatar } from "@/lib/utils";
-import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, UserPlus } from "lucide-react";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, UserPlus, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@/lib/mock-data";
+import { useAuth } from "@/context/AuthContext";
 
-const NAV = [
+const STUDENT_NAV = [
   { title: "Overview", url: "/student", icon: LayoutDashboard },
   { title: "Discovery", url: "/student/discovery", icon: Search },
   { title: "Connections", url: "/student/connections", icon: Users },
@@ -21,30 +22,25 @@ const NAV = [
   { title: "My Profile", url: "/student/profile", icon: UserIcon },
 ];
 
+const ALUMNI_NAV = [
+  { title: "Overview", url: "/alumni", icon: LayoutDashboard },
+  { title: "Discovery", url: "/alumni/discovery", icon: Search },
+  { title: "Incoming Requests", url: "/alumni/requests", icon: FileText },
+  { title: "Connections", url: "/alumni/connections", icon: Users },
+  { title: "My Posts", url: "/alumni/posts", icon: Newspaper },
+  { title: "Create Post", url: "/alumni/create-post", icon: PlusCircle },
+  { title: "Referral Settings", url: "/alumni/settings", icon: Settings },
+  { title: "My Profile", url: "/alumni/profile", icon: UserIcon },
+];
+
 export default function ProfileView() {
   const { id } = useParams();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { currentUser, loading: authLoading } = useAuth();
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
   const [userLoading, setUserLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<"none" | "pending" | "accepted">("none");
   const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      try {
-        const userData = await getCurrentUser();
-        setCurrentUser(userData);
-      } catch (error) {
-        console.error("Failed to fetch current user:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCurrentUser();
-  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -101,7 +97,7 @@ export default function ProfileView() {
     }
   };
 
-  if (loading || !currentUser) {
+  if (authLoading || !currentUser) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-muted-foreground">Loading...</p>
@@ -109,9 +105,13 @@ export default function ProfileView() {
     );
   }
 
+  const isAlumni = currentUser.role === "alumni";
+  const NAV = isAlumni ? ALUMNI_NAV : STUDENT_NAV;
+  const roleLabel = isAlumni ? "Alumni" : "Student";
+
   if (userLoading) {
     return (
-      <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>
+      <DashboardLayout navItems={NAV} groupLabel={roleLabel} userName={currentUser.name} userRole={roleLabel} userAvatar={currentUser.avatar} currentUser={currentUser}>
         <div className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">Loading user...</p>
         </div>
@@ -121,7 +121,7 @@ export default function ProfileView() {
 
   if (!user) {
     return (
-      <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>
+      <DashboardLayout navItems={NAV} groupLabel={roleLabel} userName={currentUser.name} userRole={roleLabel} userAvatar={currentUser.avatar} currentUser={currentUser}>
         <div className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">User not found</p>
         </div>
@@ -134,7 +134,7 @@ export default function ProfileView() {
   const displayCurrentUser = { ...currentUser, name: currentUserName };
 
   return (
-    <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUserName} userRole="Student" userAvatar={currentUser.avatar} currentUser={displayCurrentUser}>
+    <DashboardLayout navItems={NAV} groupLabel={roleLabel} userName={currentUserName} userRole={roleLabel} userAvatar={currentUser.avatar} currentUser={displayCurrentUser}>
       <div className="max-w-2xl mx-auto">
         <Card className="mb-6">
           <CardContent className="p-6">

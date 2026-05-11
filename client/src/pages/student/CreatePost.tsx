@@ -271,15 +271,6 @@ export default function CreatePost() {
                     onChange={e => setMetadata(prev => ({ ...prev, applicationLink: e.target.value }))}
                   />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="referralAvailable"
-                    checked={metadata.referralAvailable || false}
-                    onChange={e => setMetadata(prev => ({ ...prev, referralAvailable: Boolean(e.target.checked) }))}
-                  />
-                  <Label htmlFor="referralAvailable">Referral Available</Label>
-                </div>
                 <div className="space-y-2">
                   <Label>Eligible Batches</Label>
                   <p className="text-xs text-muted-foreground">Select which graduation years are eligible</p>

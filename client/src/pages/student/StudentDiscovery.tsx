@@ -1,15 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ProfileCard } from "@/components/ProfileCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { searchUsers, getCurrentUser } from "@/lib/api";
+import { searchUsers } from "@/lib/api";
 import { formatName } from "@/lib/utils";
 import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User as UserIcon, Settings } from "lucide-react";
-import type { User } from "@/lib/mock-data";
+import { useAuth } from "@/context/AuthContext";
 
 const STUDENT_NAV = [
   { title: "Overview", url: "/student", icon: LayoutDashboard },
@@ -33,12 +32,11 @@ const ALUMNI_NAV = [
 ];
 
 export default function StudentDiscovery() {
-  const location = useLocation();
-  const isAlumni = location.pathname.startsWith("/alumni");
+  const { currentUser, loading: authLoading } = useAuth();
+  const isAlumni = currentUser?.role === "alumni";
   const NAV = isAlumni ? ALUMNI_NAV : STUDENT_NAV;
   const roleLabel = isAlumni ? "Alumni" : "Student";
 
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -53,37 +51,6 @@ export default function StudentDiscovery() {
   const [year, setYear] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
   const [onlyAvailable, setOnlyAvailable] = useState(false);
-
-  // Fetch current user
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      try {
-        const user = await getCurrentUser();
-        setCurrentUser(user);
-      } catch (err) {
-        console.error("Failed to fetch current user:", err);
-        // Set a placeholder user
-        setCurrentUser({
-          id: "placeholder",
-          name: "User",
-          email: "user@example.com",
-          registrationNumber: "000000",
-          role: "student",
-          domain: "",
-          skills: [],
-          currentStatus: "studying",
-          passOutYear: 2025,
-          reputationScore: 0,
-          referralCount: 0,
-          availableForReferrals: false,
-          avatar: "",
-          joinedAt: "",
-          companyVerified: "unverified",
-        });
-      }
-    };
-    fetchCurrentUser();
-  }, []);
 
   // Debounce search input
   useEffect(() => {
@@ -122,6 +89,10 @@ export default function StudentDiscovery() {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  if (authLoading || !currentUser) {
+    return null;
+  }
 
   const currentUserName = formatName(currentUser?.name || "User");
   const displayCurrentUser = currentUser ? { ...currentUser, name: currentUserName } : undefined;
