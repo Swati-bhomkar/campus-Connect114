@@ -58,11 +58,7 @@ type PostMetadata = {
   internshipDuration?: string;
   mode?: string;
   ppoAvailable?: boolean;
-  referralSlots?: number;
-  deadline?: string;
-  requiresConnection?: boolean;
   eventCategory?: string;
-  organizer?: string;
   eventMode?: string;
   registrationLink?: string;
   eventDate?: string;
@@ -75,6 +71,23 @@ type PostMetadata = {
   teamSize?: number;
   projectTitle?: string;
 };
+
+const metadataFieldsByType: Record<string, Array<keyof PostMetadata>> = {
+  job_opening: ["roleTitle", "location", "applicationLink", "eligibleBatches", "referralAvailable"],
+  internship_opening: ["internshipDuration", "mode", "applicationLink", "eligibleBatches", "ppoAvailable"],
+  referral_opportunity: ["roleTitle", "ppoAvailable"],
+  event: ["eventCategory", "eventMode", "registrationLink", "eventDate"],
+  internship_achievement: ["roleTitle", "duration", "stipend", "certificateLink"],
+  hackathon_achievement: ["hackathonName", "position", "teamSize", "projectTitle"],
+};
+
+const buildMetadataPayload = (postType: string, metadata: PostMetadata) =>
+  (metadataFieldsByType[postType] || []).reduce<PostMetadata>((payload, field) => {
+    if (metadata[field] !== undefined) {
+      payload[field] = metadata[field] as never;
+    }
+    return payload;
+  }, {});
 
 export default function CreatePost() {
   const navigate = useNavigate();
@@ -150,12 +163,12 @@ export default function CreatePost() {
         return;
       }
     } else if (postType === "referral_opportunity") {
-      if (!metadata.roleTitle?.trim() || !metadata.referralSlots || !metadata.deadline) {
+      if (!metadata.roleTitle?.trim()) {
         toast.error("Please fill all required fields for referral opportunity.");
         return;
       }
     } else if (postType === "event") {
-      if (!metadata.eventCategory?.trim() || !metadata.organizer?.trim() || !metadata.eventMode || !metadata.registrationLink?.trim() || !metadata.eventDate) {
+      if (!metadata.eventCategory?.trim() || !metadata.eventMode || !metadata.registrationLink?.trim() || !metadata.eventDate) {
         toast.error("Please fill all required fields for event.");
         return;
       }
@@ -169,7 +182,7 @@ export default function CreatePost() {
         description: description.trim(),
         company: company.trim(),
         domain: domain.trim(),
-        metadata,
+        metadata: buildMetadataPayload(postType, metadata),
         imageUrl: imagePreview, // TODO: Replace with proper file upload/storage
         expiresAt: isAlumni && expiresAt ? expiresAt : null,
       };
@@ -284,15 +297,6 @@ export default function CreatePost() {
                     onChange={e => setMetadata(prev => ({ ...prev, applicationLink: e.target.value }))}
                   />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="jobPpoAvailable"
-                    checked={metadata.ppoAvailable || false}
-                    onChange={e => setMetadata(prev => ({ ...prev, ppoAvailable: Boolean(e.target.checked) }))}
-                  />
-                  <Label htmlFor="jobPpoAvailable">PPO Available</Label>
-                </div>
                 <div className="space-y-2">
                   <Label>Eligible Batches</Label>
                   <p className="text-xs text-muted-foreground">Select which graduation years are eligible</p>
@@ -396,32 +400,6 @@ export default function CreatePost() {
                     onChange={e => setMetadata(prev => ({ ...prev, roleTitle: e.target.value }))}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Referral Slots *</Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g. 5"
-                    value={metadata.referralSlots ?? ""}
-                    onChange={e => setMetadata(prev => ({ ...prev, referralSlots: e.target.value ? parseInt(e.target.value) : undefined }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Deadline *</Label>
-                  <Input
-                    type="date"
-                    value={metadata.deadline || ""}
-                    onChange={e => setMetadata(prev => ({ ...prev, deadline: e.target.value }))}
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="requiresConnection"
-                    checked={metadata.requiresConnection || false}
-                    onChange={e => setMetadata(prev => ({ ...prev, requiresConnection: Boolean(e.target.checked) }))}
-                  />
-                  <Label htmlFor="requiresConnection">Requires Connection</Label>
-                </div>
                 <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -442,14 +420,6 @@ export default function CreatePost() {
                     placeholder="e.g. Workshop, Seminar"
                     value={metadata.eventCategory || ""}
                     onChange={e => setMetadata(prev => ({ ...prev, eventCategory: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Organizer *</Label>
-                  <Input
-                    placeholder="e.g. Alumni Association"
-                    value={metadata.organizer || ""}
-                    onChange={e => setMetadata(prev => ({ ...prev, organizer: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">

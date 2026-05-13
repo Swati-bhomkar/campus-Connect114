@@ -18,17 +18,16 @@ const typeConfig: Record<string, { icon: typeof Briefcase; label: string; cls: s
 
 interface PostMetadata {
   location?: string;
-  eligibleBatches?: string[];
+  eligibleBatches?: Array<string | number>;
   applicationLink?: string;
 
   internshipDuration?: string;
   mode?: string;
   ppoAvailable?: boolean;
 
-  deadline?: string;
-
   eventCategory?: string;
   eventDate?: string;
+  eventMode?: string;
   registrationLink?: string;
 
   roleTitle?: string;
@@ -82,6 +81,12 @@ interface PostCardProps {
   canDelete?: boolean;
 }
 
+const formatMode = (mode: string) =>
+  mode
+    .split("-")
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("-");
+
 export function PostCard({ post, className, onDelete, onFlag, showAdminActions, currentUserId, canDelete }: PostCardProps) {
 const author = {
   name: post.authorName || "Unknown User",
@@ -119,7 +124,7 @@ const author = {
                 Expires on {new Date(post.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
               </Badge>
             )}
-            {post.metadata?.ppoAvailable && (
+            {post.type !== "job_opening" && post.metadata?.ppoAvailable && (
               <Badge variant="outline" className="shrink-0 text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
                 PPO Available
               </Badge>
@@ -175,7 +180,7 @@ const author = {
                   )}
                   {post.metadata.mode && (
                     <span className="inline-flex items-center gap-1">
-                      <Monitor className="h-3 w-3" /> {post.metadata.mode}
+                      <Monitor className="h-3 w-3" /> {formatMode(post.metadata.mode)}
                     </span>
                   )}
                   {post.metadata.eligibleBatches?.length > 0 && (
@@ -187,10 +192,14 @@ const author = {
               )}
 
               {/* Referral Opportunity metadata */}
-              {post.type === "referral_opportunity" && post.metadata.deadline && (
-                <span className="inline-flex items-center gap-1">
-                  <Calendar className="h-3 w-3" /> Deadline: {new Date(post.metadata.deadline).toLocaleDateString("en-IN")}
-                </span>
+              {post.type === "referral_opportunity" && (
+                <>
+                  {post.metadata.roleTitle && (
+                    <span className="inline-flex items-center gap-1">
+                      <Briefcase className="h-3 w-3" /> Role: {post.metadata.roleTitle}
+                    </span>
+                  )}
+                </>
               )}
 
               {/* Event metadata */}
@@ -204,6 +213,11 @@ const author = {
                   {post.metadata.eventDate && (
                     <span className="inline-flex items-center gap-1">
                       <Calendar className="h-3 w-3" /> {new Date(post.metadata.eventDate).toLocaleDateString("en-IN")}
+                    </span>
+                  )}
+                  {post.metadata.eventMode && (
+                    <span className="inline-flex items-center gap-1">
+                      <Monitor className="h-3 w-3" /> Mode: {formatMode(post.metadata.eventMode)}
                     </span>
                   )}
                 </>

@@ -52,7 +52,25 @@ export interface ReferralRequest {
 }
 
 export interface PostMetadata {
-  deadline?: string;
+  roleTitle?: string;
+  location?: string;
+  applicationLink?: string;
+  eligibleBatches?: number[];
+  referralAvailable?: boolean;
+  internshipDuration?: string;
+  mode?: string;
+  ppoAvailable?: boolean;
+  eventCategory?: string;
+  eventMode?: string;
+  registrationLink?: string;
+  eventDate?: string;
+  duration?: string;
+  stipend?: string;
+  certificateLink?: string;
+  hackathonName?: string;
+  position?: string;
+  teamSize?: number;
+  projectTitle?: string;
 }
 
 export interface Post {
@@ -217,13 +235,13 @@ export const REFERRAL_REQUESTS: ReferralRequest[] = [
 export const POSTS: Post[] = [
   { id: "p1", authorId: "u1", type: "job_opening", title: "SWE Openings at Google Bangalore", description: "Multiple L3/L4 positions open in my team. Looking for strong DSA and system design candidates. Referrals available for college alumni.", company: "Google", domain: "Software Engineering", batch: 2025, createdAt: "2025-03-01", jobLink: "https://careers.google.com/jobs/123" },
   { id: "p2", authorId: "u4", type: "internship_achievement", title: "Completed Summer Internship at Zomato", description: "Built a real-time order tracking feature using React and WebSockets. Great learning experience with a supportive team.", company: "Zomato", domain: "Frontend Development", batch: 2025, createdAt: "2025-03-05", imageUrl: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&h=400&fit=crop" },
-  { id: "p3", authorId: "u2", type: "referral_opportunity", title: "DS/ML Roles at Microsoft IDC", description: "My team is hiring for data scientist and ML engineer positions. Strong Python and statistics background required. Reach out with your resume.", company: "Microsoft", domain: "Data Science", batch: 2025, createdAt: "2025-03-08", jobLink: "https://careers.microsoft.com/jobs/456" },
+  { id: "p3", authorId: "u2", type: "referral_opportunity", title: "DS/ML Roles at Microsoft IDC", description: "My team is hiring for data scientist and ML engineer positions. Strong Python and statistics background required. Reach out with your resume.", company: "Microsoft", domain: "Data Science", batch: 2025, createdAt: "2025-03-08", jobLink: "https://careers.microsoft.com/jobs/456", metadata: { roleTitle: "Data Scientist / ML Engineer" } },
   { id: "p4", authorId: "u5", type: "hackathon_achievement", title: "Won Smart India Hackathon 2025", description: "Our team built an AI-powered document verification system. Placed 1st in the software edition. Technologies: Python, TensorFlow, React.", company: "SIH", domain: "Full Stack Development", batch: 2025, createdAt: "2025-03-10", imageUrl: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=600&h=400&fit=crop" },
-  { id: "p5", authorId: "u10", type: "job_opening", title: "Backend Engineers Needed at Uber", description: "Hiring for Go and gRPC experienced engineers. Competitive packages. DM for referral (connected alumni only).", company: "Uber", domain: "Backend Engineering", batch: 2025, createdAt: "2025-03-12", jobLink: "https://uber.com/careers/789" },
+  { id: "p5", authorId: "u10", type: "job_opening", title: "Backend Engineers Needed at Uber", description: "Hiring for Go and gRPC experienced engineers. Competitive packages. DM for referral details.", company: "Uber", domain: "Backend Engineering", batch: 2025, createdAt: "2025-03-12", jobLink: "https://uber.com/careers/789" },
   { id: "p6", authorId: "u6", type: "internship_opening", title: "DevOps Internships at Flipkart", description: "Looking for candidates with Kubernetes and AWS experience. 6-month internship with PPO opportunity.", company: "Flipkart", domain: "DevOps", batch: 2025, createdAt: "2025-03-14" },
   { id: "p7", authorId: "u9", type: "hackathon_achievement", title: "CTF Competition - 2nd Place", description: "Secured 2nd place in the national-level CTF competition organized by IIT Bombay. Solved 18/20 challenges.", company: "IIT Bombay CTF", domain: "Cybersecurity", batch: 2025, createdAt: "2025-03-16" },
   { id: "p8", authorId: "u8", type: "job_opening", title: "APM Hiring at Razorpay", description: "Associate Product Manager openings. Looking for candidates with strong analytical skills and some technical background.", company: "Razorpay", domain: "Product Management", batch: 2025, createdAt: "2025-03-18", jobLink: "https://razorpay.com/careers/101" },
-  { id: "p9", authorId: "u1", type: "referral_opportunity", title: "Referrals for Google SDE Roles", description: "I have 2 referral slots left this month for SDE-1 and SDE-2 positions. DSA + system design required. Connected alumni only.", company: "Google", domain: "Software Engineering", batch: 2025, createdAt: "2025-03-20" },
+  { id: "p9", authorId: "u1", type: "referral_opportunity", title: "Referrals for Google SDE Roles", description: "Open referrals for SDE-1 and SDE-2 positions. DSA + system design required.", company: "Google", domain: "Software Engineering", batch: 2025, createdAt: "2025-03-20", metadata: { roleTitle: "SDE-1 / SDE-2" } },
 ];
 
 export const NOTIFICATIONS: Notification[] = [

@@ -30,6 +30,56 @@ const normalizeExpiresAt = (expiresAt) => {
   return parsedDate;
 };
 
+const metadataFieldsByType = {
+  job_opening: [
+    "roleTitle",
+    "location",
+    "applicationLink",
+    "eligibleBatches",
+    "referralAvailable",
+  ],
+  internship_opening: [
+    "internshipDuration",
+    "mode",
+    "applicationLink",
+    "eligibleBatches",
+    "ppoAvailable",
+  ],
+  referral_opportunity: [
+    "roleTitle",
+    "ppoAvailable",
+  ],
+  event: [
+    "eventCategory",
+    "eventMode",
+    "registrationLink",
+    "eventDate",
+  ],
+  internship_achievement: [
+    "roleTitle",
+    "duration",
+    "stipend",
+    "certificateLink",
+  ],
+  hackathon_achievement: [
+    "hackathonName",
+    "position",
+    "teamSize",
+    "projectTitle",
+  ],
+};
+
+const sanitizeMetadata = (type, metadata = {}) => {
+  const allowedFields = metadataFieldsByType[type] || [];
+
+  return allowedFields.reduce((sanitized, field) => {
+    if (metadata[field] !== undefined) {
+      sanitized[field] = metadata[field];
+    }
+    return sanitized;
+  }, {});
+};
+
 const transformPost = (post, author = post.authorId) => ({
   id: post._id.toString(),
   authorId: author?._id ? author._id.toString() : post.authorId.toString(),
@@ -58,6 +108,7 @@ export const createPost = async (req, res) => {
     const { type, title, description, company, domain, metadata, imageUrl, expiresAt } = req.body;
     const authorId = req.user._id;
     const normalizedExpiresAt = normalizeExpiresAt(expiresAt);
+    const sanitizedMetadata = sanitizeMetadata(type, metadata);
 
     const post = new Post({
       authorId,
@@ -66,7 +117,7 @@ export const createPost = async (req, res) => {
       description,
       company,
       domain,
-      metadata,
+      metadata: sanitizedMetadata,
       imageUrl: imageUrl || null,
       expiresAt: normalizedExpiresAt,
     });

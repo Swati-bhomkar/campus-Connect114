@@ -98,7 +98,8 @@ postSchema.pre("save", function(next) {
 
     event: [
       "eventCategory",
-      "organizer",
+      "eventMode",
+      "registrationLink",
       "eventDate"
     ],
   };
@@ -136,10 +137,6 @@ postSchema.pre("save", function(next) {
     if (typeof sr.min !== "number" || typeof sr.max !== "number") {
       return next(new Error("salaryRange min/max must be numbers"));
     }
-  }
-
-  if (post.type === "referral_opportunity" && post.metadata.slotsRemaining === undefined) {
-    post.metadata.slotsRemaining = post.metadata.referralSlots || 1;
   }
 
   // Optional: Support eligibleBatches for job_opening and internship_opening

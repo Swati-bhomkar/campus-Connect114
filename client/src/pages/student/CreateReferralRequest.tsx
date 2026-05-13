@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Upload, Calendar, Loader2, Settings } from "lucide-react";
+import { LayoutDashboard, Search, Users, FileText, Newspaper, PlusCircle, User, Upload, Briefcase, Loader2, Settings } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -176,8 +176,7 @@ export default function CreateReferralRequest() {
     return null;
   }
 
-  // Get deadline from post metadata if available
-  const deadline = post?.metadata?.deadline ? new Date(post.metadata.deadline) : null;
+  const roleTitle = post?.metadata?.roleTitle || post.title;
 
   return (
     <DashboardLayout navItems={navItems} groupLabel={roleLabel} userName={currentUser.name} userRole={roleLabel} userAvatar={currentUser.avatar} currentUser={currentUser}>
@@ -199,10 +198,10 @@ export default function CreateReferralRequest() {
                 <div className="flex-1">
                   <h3 className="font-semibold text-foreground">{post.authorName}</h3>
                   <p className="text-sm text-muted-foreground">{post.company} · {post.domain}</p>
-                  {deadline && (
+                  {roleTitle && (
                     <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Deadline: {deadline.toLocaleDateString("en-IN")}
+                      <Briefcase className="h-3 w-3" />
+                      Role: {roleTitle}
                     </p>
                   )}
                 </div>
