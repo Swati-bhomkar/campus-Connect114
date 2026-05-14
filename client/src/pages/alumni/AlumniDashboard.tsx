@@ -88,14 +88,17 @@ export default function AlumniDashboard() {
 
   const recentReceivedReferrals = receivedReferrals.slice(0, 3);
   const latestNetworkPosts = feedPosts.slice(0, 3);
-  const currentUserId = currentUser.id || (currentUser as DashboardUser)._id || "";
+  const currentUserId = currentUser._id || currentUser.id || "";
   const displayName = formatName(currentUser.name);
   const dashboardUser = { ...currentUser, id: currentUserId, name: displayName };
   const handleDelete = async (postId: string) => {
     try {
+      const deletedPost = feedPosts.find(p => p.id === postId);
       await deletePost(postId);
       setFeedPosts(prev => prev.filter(p => p.id !== postId));
-      setMyPostsCount(prev => Math.max(0, prev - 1));
+      if (deletedPost?.authorId === currentUserId) {
+        setMyPostsCount(prev => Math.max(0, prev - 1));
+      }
       toast.success("Post deleted successfully");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to delete post");

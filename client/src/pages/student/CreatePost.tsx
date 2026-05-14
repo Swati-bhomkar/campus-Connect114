@@ -64,7 +64,7 @@ type PostMetadata = {
   eventDate?: string;
   // Student achievement fields
   duration?: string;
-  stipend?: string;
+  stipendStatus?: "stipend" | "no_stipend";
   certificateLink?: string;
   hackathonName?: string;
   position?: string;
@@ -77,7 +77,7 @@ const metadataFieldsByType: Record<string, Array<keyof PostMetadata>> = {
   internship_opening: ["internshipDuration", "mode", "applicationLink", "eligibleBatches", "ppoAvailable"],
   referral_opportunity: ["roleTitle", "ppoAvailable"],
   event: ["eventCategory", "eventMode", "registrationLink", "eventDate"],
-  internship_achievement: ["roleTitle", "duration", "stipend", "certificateLink"],
+  internship_achievement: ["roleTitle", "duration", "stipendStatus", "certificateLink"],
   hackathon_achievement: ["hackathonName", "position", "teamSize", "projectTitle"],
 };
 
@@ -474,12 +474,17 @@ export default function CreatePost() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Stipend</Label>
-                  <Input
-                    placeholder="e.g. ₹15,000/month"
-                    value={metadata.stipend || ""}
-                    onChange={e => setMetadata(prev => ({ ...prev, stipend: e.target.value }))}
-                  />
+                  <Label>Stipend Status</Label>
+                  <Select
+                    value={metadata.stipendStatus || ""}
+                    onValueChange={(value) => setMetadata(prev => ({ ...prev, stipendStatus: value as PostMetadata["stipendStatus"] }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select stipend status" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="stipend">Stipend</SelectItem>
+                      <SelectItem value="no_stipend">No Stipend</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Certificate Link</Label>

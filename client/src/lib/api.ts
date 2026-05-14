@@ -46,6 +46,7 @@ export const getCurrentUser = async () => {
   // Normalize API response: map collegEmail to email
   const user = {
     ...data.user,
+    _id: data.user._id || data.user.id,
     id: data.user.id || data.user._id,
     email: data.user.collegEmail,
   };

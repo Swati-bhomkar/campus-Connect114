@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {AlertDialog,AlertDialogAction,AlertDialogCancel,AlertDialogContent,AlertDialogDescription,AlertDialogFooter,AlertDialogHeader,AlertDialogTitle,AlertDialogTrigger,} from "@/components/ui/alert-dialog";
-import { Briefcase, Trophy, Award, Megaphone, ExternalLink, GraduationCap, ImageIcon, Trash2, MapPin, Clock, Monitor, Calendar, Tag, Send } from "lucide-react";
+import { Briefcase, Trophy, Award, Megaphone, ExternalLink, GraduationCap, ImageIcon, Trash2, MapPin, Clock, Monitor, Calendar, Tag, Send, Users } from "lucide-react";
 import { cn, normalizeExternalUrl, renderAvatar } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -32,16 +32,18 @@ interface PostMetadata {
 
   roleTitle?: string;
   duration?: string;
-  stipend?: string;
+  stipendStatus?: "stipend" | "no_stipend";
+  certificateLink?: string;
 
   hackathonName?: string;
   position?: string;
+  teamSize?: number;
   projectTitle?: string;
 }
 
 interface Post {
   id: string;
-  authorId: string;
+  authorId: string | { id?: string; _id?: string };
 
   authorName?: string;
   authorAvatar?: string;
@@ -78,7 +80,6 @@ interface PostCardProps {
   onFlag?: (postId: string) => void;
   showAdminActions?: boolean;
   currentUserId?: string;
-  canDelete?: boolean;
 }
 
 const formatMode = (mode: string) =>
@@ -87,7 +88,17 @@ const formatMode = (mode: string) =>
     .map(part => part.charAt(0).toUpperCase() + part.slice(1))
     .join("-");
 
-export function PostCard({ post, className, onDelete, onFlag, showAdminActions, currentUserId, canDelete }: PostCardProps) {
+const stipendStatusLabels: Record<NonNullable<PostMetadata["stipendStatus"]>, string> = {
+  stipend: "Stipend",
+  no_stipend: "No Stipend",
+};
+
+const getEntityId = (entity: string | { id?: string; _id?: string } | undefined) => {
+  if (!entity) return "";
+  return typeof entity === "string" ? entity : entity._id || entity.id || "";
+};
+
+export function PostCard({ post, className, onDelete, onFlag, showAdminActions, currentUserId }: PostCardProps) {
 const author = {
   name: post.authorName || "Unknown User",
   avatar: post.authorAvatar || "",
@@ -96,8 +107,8 @@ const author = {
   const config = typeConfig[post.type] || typeConfig.job_opening;
   const Icon = config.icon;
   const [imgError, setImgError] = useState(false);
-  const isOwner = currentUserId && post.authorId === currentUserId;
-  const showDeleteAction = Boolean(onDelete && !showAdminActions && (canDelete || isOwner));
+  const isOwner = Boolean(currentUserId && getEntityId(post.authorId) === currentUserId);
+  const showDeleteAction = Boolean(onDelete && !showAdminActions && isOwner);
 
   return (
     <Card className={cn("transition-shadow hover:shadow-md", post.flagged && "border-destructive/50", className)}>
@@ -128,6 +139,38 @@ const author = {
               <Badge variant="outline" className="shrink-0 text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
                 PPO Available
               </Badge>
+            )}
+            {showDeleteAction && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1 border-destructive/30 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="Delete post"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this post?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This post will be permanently removed from your profile and the feed.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => onDelete(post.id)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </div>
         </div>
@@ -236,10 +279,20 @@ const author = {
                       <Clock className="h-3 w-3" /> {post.metadata.duration}
                     </span>
                   )}
-                  {post.metadata.stipend && (
+                  {post.metadata.stipendStatus && (
                     <span className="inline-flex items-center gap-1">
-                      <Award className="h-3 w-3" /> {post.metadata.stipend}
+                      <Award className="h-3 w-3" /> {stipendStatusLabels[post.metadata.stipendStatus]}
                     </span>
+                  )}
+                  {post.metadata.certificateLink && (
+                    <a
+                      href={normalizeExternalUrl(post.metadata.certificateLink)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700 transition-colors hover:bg-emerald-100 hover:text-emerald-800"
+                    >
+                      <ExternalLink className="h-3 w-3" /> View Certificate
+                    </a>
                   )}
                 </>
               )}
@@ -257,6 +310,11 @@ const author = {
                       <Award className="h-3 w-3" /> {post.metadata.position}
                     </span>
                   )}
+                  {post.metadata.teamSize && (
+                    <span className="inline-flex items-center gap-1">
+                      <Users className="h-3 w-3" /> Team Size: {post.metadata.teamSize}
+                    </span>
+                  )}
                   {post.metadata.projectTitle && (
                     <span className="inline-flex items-center gap-1">
                       <Tag className="h-3 w-3" /> {post.metadata.projectTitle}
@@ -267,10 +325,6 @@ const author = {
             </>
           ) : (
             <>
-              {/* Fallback: old metadata for backward compatibility */}
-              {post.batch !== undefined && (
-                <span className="rounded bg-secondary px-2 py-0.5">Batch {post.batch}</span>
-              )}
               {post.jobLink && (
                 <a href={normalizeExternalUrl(post.jobLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline ml-auto">
                   Apply <ExternalLink className="h-3 w-3" />
@@ -324,36 +378,6 @@ const author = {
                 <ExternalLink className="h-3 w-3" /> Register
               </a>
             )}
-          </div>
-        )}
-
-        {/* Owner delete button */}
-        {showDeleteAction && (
-          <div className="mt-3 border-t pt-3">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive">
-                  <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete Post
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this post?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This post will be permanently removed from your profile and the feed.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => onDelete(post.id)}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
           </div>
         )}
 

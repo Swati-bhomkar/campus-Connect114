@@ -52,7 +52,7 @@ export default function StudentPosts() {
     return null;
   }
 
-  const currentUserId = currentUser.id || (currentUser as typeof currentUser & { _id?: string })._id || "";
+  const currentUserId = currentUser._id || currentUser.id || "";
 
   return (
     <DashboardLayout navItems={NAV} groupLabel="Student" userName={currentUser.name} userRole="Student" userAvatar={currentUser.avatar} currentUser={currentUser}>

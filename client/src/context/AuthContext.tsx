@@ -17,10 +17,15 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const getStoredToken = () => localStorage.getItem("token");
 
-const normalizeUser = (user: User): User => ({
-  ...user,
-  id: user.id || (user as User & { _id?: string })._id || "",
-});
+const normalizeUser = (user: User): User => {
+  const mongoId = user._id || user.id || "";
+
+  return {
+    ...user,
+    _id: mongoId,
+    id: user.id || mongoId,
+  };
+};
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(getStoredToken());

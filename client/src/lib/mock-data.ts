@@ -5,6 +5,7 @@ export type PostType = "internship_achievement" | "hackathon_achievement" | "job
 export type VerificationStatus = "verified" | "pending" | "unverified";
 
 export interface User {
+  _id?: string;
   id: string;
   name: string;
   email: string;
@@ -65,7 +66,7 @@ export interface PostMetadata {
   registrationLink?: string;
   eventDate?: string;
   duration?: string;
-  stipend?: string;
+  stipendStatus?: "stipend" | "no_stipend";
   certificateLink?: string;
   hackathonName?: string;
   position?: string;

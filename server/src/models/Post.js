@@ -109,6 +109,7 @@ postSchema.pre("save", function(next) {
     applicationMethod: ["external_link", "platform_apply", "email"],
     mode: ["remote", "hybrid", "on-site"],
     eventMode: ["online", "offline", "hybrid"],
+    stipendStatus: ["stipend", "no_stipend"],
   };
 
   const fields = requiredFields[post.type];

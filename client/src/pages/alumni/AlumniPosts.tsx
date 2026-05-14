@@ -53,7 +53,7 @@ export default function AlumniPosts() {
     return null;
   }
 
-  const currentUserId = currentUser.id || (currentUser as typeof currentUser & { _id?: string })._id || "";
+  const currentUserId = currentUser._id || currentUser.id || "";
 
   return (
     <DashboardLayout
@@ -92,7 +92,6 @@ export default function AlumniPosts() {
               post={p}
               currentUserId={currentUserId}
               onDelete={handleDelete}
-              canDelete
             />
           ))}
         </div>

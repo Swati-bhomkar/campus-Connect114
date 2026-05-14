@@ -58,7 +58,7 @@ const metadataFieldsByType = {
   internship_achievement: [
     "roleTitle",
     "duration",
-    "stipend",
+    "stipendStatus",
     "certificateLink",
   ],
   hackathon_achievement: [

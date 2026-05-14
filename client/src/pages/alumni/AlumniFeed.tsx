@@ -54,7 +54,7 @@ export default function AlumniFeed() {
     return null;
   }
 
-  const currentUserId = currentUser.id || (currentUser as typeof currentUser & { _id?: string })._id || "";
+  const currentUserId = currentUser._id || currentUser.id || "";
 
   return (
     <DashboardLayout navItems={NAV} groupLabel="Alumni" userName={currentUser.name} userRole="Alumni" userAvatar={currentUser.avatar} currentUser={currentUser}>
